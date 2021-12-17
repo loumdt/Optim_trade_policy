@@ -1,5 +1,5 @@
 ---
-title: Export tax in 1-2-3 GE model
+title: Optimisation de la politique commerciale française sous contraintes de la réduction de l'empreinte carbone
 authors: Julien Ancel, Théo Mandonnet
 ---
 # Optimisation dans l'incertain
