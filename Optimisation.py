@@ -1,0 +1,2 @@
+""" Optimize french trade policy
+"""
