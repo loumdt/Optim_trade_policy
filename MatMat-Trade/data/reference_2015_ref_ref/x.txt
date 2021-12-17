@@ -1,0 +1,86 @@
+region	sector	indout
+FR	Agriculture	83372.5118809
+FR	Crude coal	359.055612901
+FR	Crude oil	1675.51123481
+FR	Natural gas	39754.4945475
+FR	Extractive industry	8881.82165608
+FR	Biomass_industry	199477.624269
+FR	Clothing	27314.5270648
+FR	Heavy_industry	203481.397718
+FR	Construction	312578.319159
+FR	Automobile	90943.3929236
+FR	Oth transport equipment	72302.5242035
+FR	Machinery	133964.087043
+FR	Electronics	28868.217048
+FR	Fossil fuels	33302.7682282
+FR	Electricity and heat	77410.7588158
+FR	Transport services	162480.30422
+FR	Composite	2592014.01847
+Europe	Agriculture	351392.355491
+Europe	Crude coal	22260.600952
+Europe	Crude oil	15517.3983091
+Europe	Natural gas	133440.453328
+Europe	Extractive industry	50180.7652079
+Europe	Biomass_industry	1115911.6621
+Europe	Clothing	256036.140073
+Europe	Heavy_industry	1158244.768
+Europe	Construction	1306621.9431
+Europe	Automobile	620752.940514
+Europe	Oth transport equipment	137840.313223
+Europe	Machinery	1123206.98302
+Europe	Electronics	251309.76959
+Europe	Fossil fuels	286541.812639
+Europe	Electricity and heat	417770.480152
+Europe	Transport services	875323.184084
+Europe	Composite	11160636.0329
+BRICS	Agriculture	1946992.54459
+BRICS	Crude coal	248699.853278
+BRICS	Crude oil	311359.098596
+BRICS	Natural gas	77411.5783497
+BRICS	Extractive industry	300633.187802
+BRICS	Biomass_industry	2206157.31797
+BRICS	Clothing	1629343.54009
+BRICS	Heavy_industry	5073980.77405
+BRICS	Construction	3143933.56296
+BRICS	Automobile	794829.321397
+BRICS	Oth transport equipment	515185.230644
+BRICS	Machinery	2697864.73829
+BRICS	Electronics	1256400.93323
+BRICS	Fossil fuels	932115.388624
+BRICS	Electricity and heat	653422.157373
+BRICS	Transport services	857067.691068
+BRICS	Composite	13845277.548
+Other_OECD	Agriculture	945934.660899
+Other_OECD	Crude coal	95031.5404598
+Other_OECD	Crude oil	277373.703185
+Other_OECD	Natural gas	359128.39339
+Other_OECD	Extractive industry	190101.25522
+Other_OECD	Biomass_industry	2500733.9254
+Other_OECD	Clothing	439934.9953
+Other_OECD	Heavy_industry	3182501.42381
+Other_OECD	Construction	3363081.64411
+Other_OECD	Automobile	1536423.22406
+Other_OECD	Oth transport equipment	458573.427785
+Other_OECD	Machinery	2159577.80035
+Other_OECD	Electronics	1024012.2954
+Other_OECD	Fossil fuels	843820.591713
+Other_OECD	Electricity and heat	719843.525601
+Other_OECD	Transport services	2041639.18373
+Other_OECD	Composite	35255055.0005
+RoW	Agriculture	1421233.60131
+RoW	Crude coal	43586.5412265
+RoW	Crude oil	488056.738542
+RoW	Natural gas	161105.693919
+RoW	Extractive industry	198546.793761
+RoW	Biomass_industry	1045041.05689
+RoW	Clothing	292651.438797
+RoW	Heavy_industry	1318494.63217
+RoW	Construction	1555590.30733
+RoW	Automobile	422631.612279
+RoW	Oth transport equipment	115420.398445
+RoW	Machinery	774627.145601
+RoW	Electronics	448391.35154
+RoW	Fossil fuels	410553.922277
+RoW	Electricity and heat	315278.999611
+RoW	Transport services	878960.170902
+RoW	Composite	9934869.13054
