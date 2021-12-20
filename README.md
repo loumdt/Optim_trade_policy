@@ -3,8 +3,9 @@ title: Optimisation de la politique commerciale française sous contraintes de l
 authors: Julien Ancel, Théo Mandonnet
 ---
 # Optimisation dans l'incertain
-## Politique commerciale optimale française en vue d'atteindre son objectif d'empreinte carbone, en deux pas de temps : 2015 et 2050. 
+## Politique commerciale optimale française en vue d'atteindre son objectif d'empreinte carbone, en deux pas de temps : 2015 et 2030. 
 
+Objectif : Réduire de 40 % les émissions de gaz à effet de serre entre 1990 et 2030.
 
 Soit $q_0$ le vecteur des fractions de demande française importées par la France depuis chaque région du monde $r \in R$ en $t=0$, des variables de décision :
 $$ q_0 = (q_{0r})_{r \in R} $$
