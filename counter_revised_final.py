@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 import math
 from math import log, exp
 from scipy import interpolate
+from tqdm import tqdm
+import json
 #
 #--key to activate GDP revision according to past values
 #revise_GDP=False
@@ -624,6 +626,10 @@ for source in GDPsources:
   for scen in SSPscenarios:
     for year in years:
       GDP[source][scen]['European Union'][year]=np.sum(GDP[source][scen][country][year] for country in European_Union)
+jsongdp = json.dumps(GDP)
+f=open("GDP_data.json","w")
+f.write(jsongdp)
+f.close()
 #
 #--Building a time series of GDP for countries with intensity targets
 #--which is constrained by past values of GDP data if revise_GDP is True
@@ -1003,10 +1009,10 @@ for source in GDPsources:
 #
 #-------------------------------------------------------------------------------------------------
 #
-print("Run MC with 50000 members")
+print("Run MC with 10000 members")
 #--Run Monte-Carlo with Ncase members
 #
-Ncase=50000
+Ncase=10000
 ROWredLUrandom=[]
 emiIndiaLUrandom=[]
 emiChinanonco2random=[]
@@ -1015,7 +1021,7 @@ ITrandom=[]
 #
 #--main loop over cases of Monte Carlo simulations
 #
-for case in range(Ncase):
+for case in tqdm(range(Ncase)):
   #
   #--pick up random values for uncertain parameters
   ROWredLUrandom.append(random())
@@ -1246,6 +1252,7 @@ for case in range(Ncase):
       List_WorldEmi[source][scen]['GHGtot'][2030].append(WorldEmi2030/1.e6)
     #
 #
+
 print("Fin MC")
 #----------------------------------------------------------------------------------------------------------------------------------------
 #--Deallocate some intermediate variables 
@@ -1279,16 +1286,16 @@ for scen in SSPscenarios:
                "%.2f" % (np.average(List_ChinaEmi[source][scen]['co2'][2030]['nopeak'])/1.e6), \
                '+/-', "%.2f" % (np.std(List_ChinaEmi[source][scen]['co2'][2030]['peak'])/1.e6), 'GtCO2')
 #
-#----------------------------------------------------------------------------------------------------------------------------------------
-#--For each country in WorldUnique and groupings in WorldOtherGroups one can check the values of the 2030 emissions 
-# List_Emi[source][scen][country]['GHGtot'][2030]
-# np.average(List_Emi[source][scen][country]['GHGtot'][2030]) for computing the average of the distribution
-# np.std(List_Emi[source][scen][country]['GHGtot'][2030]) for computing the standard deviation of the distribution
-#
-# For China, one can check the values of the 2030 emissions with and without the peak constraint
-# List_ChinaEmi[source][scen]['GHGtot'][2030]['peak'] and List_ChinaEmi[source][scen]['GHGtot'][2030]['nopeak']
-#
-#--Examples
+###############################################################################################################"###----------------------------------------------------------------------------------------------------------------------------------------
+##For each country in WorldUnique and groupings in WorldOtherGroups one can check the values of the 2030 emissions 
+#List_Emi[source][scen][country]['GHGtot'][2030]
+#np.average(List_Emi[source][scen][country]['GHGtot'][2030]) #for computing the average of the distribution
+#np.std(List_Emi[source][scen][country]['GHGtot'][2030]) #for computing the standard deviation of the distribution
+
+#For China, one can check the values of the 2030 emissions with and without the peak constraint
+#List_ChinaEmi[source][scen]['GHGtot'][2030]['peak'] and List_ChinaEmi[source][scen]['GHGtot'][2030]['nopeak']
+
+##Examples
 source='OECD'
 scen='SSP2'
 #
@@ -1308,6 +1315,18 @@ print( country, source, scen, str(percentile)+'th percentile of CO2 emissions=',
                "%.2f" % (np.percentile(List_ChinaEmi[source][scen]['co2'][2030]['peak'],percentile)/1.e6), 'GtCO2')
 #
 histo, bin_edges=np.histogram(List_ChinaIRT[source][scen],bins=40,range=[-1.,-0.6])
+plt.hist(List_ChinaIRT[source][scen],bins=40,range=[-1.,-0.6])
+plt.show()
 print( country, source, scen, 'histogram of Intensity reduction values for China: ', histo )
-#
-#--END
+# #
+# #--END
+
+json1 = json.dumps(List_Emi)
+f = open("List_Emi.json","w")
+f.write(json1)
+f.close()
+
+json2 = json.dumps(List_ChinaEmi)
+f = open("List_ChinaEmi.json","w")
+f.write(json2)
+f.close()

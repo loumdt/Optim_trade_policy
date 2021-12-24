@@ -4,26 +4,57 @@
 import pandas as pd
 import numpy as np
 import scipy.optimize as sco
+from scipy.stats import norm
+import json
 
-fileS0 = "MatMat-Trade/outputs/reference_2015_ref_ref/ghg_emissions_desag/S.txt"
 
-S0_desag = pd.read_csv(fileS0, sep= "\t",index_col=[0,1],header=[0,1])
-S0 = S0_desag.sum().sum(level=0)
-reg_list = list(S0.index)
+f = open('List_Emi.json')
+list_emi = json.load(f)
+f.close()
+
+f = open('List_ChinaEmi.json')
+list_chinaemi = json.load(f)
+f.close()
+
+f=open('GDP_data.json')
+GDP_data = json.load(f)
+f.close()
+
+sources = list(list_chinaemi.keys())
+ssps = list(list_emi['CEPII'].keys())
+reg_list = list(list_emi['CEPII']['SSP1'].keys())
+
+def moy_gdp(ssp,country):
+    res = []
+    for source in sources:
+        res.append(GDP_data[source][ssp][country]["2030"])
+    return res.mean()
+
+def intensite(ssp,country):
+    gdp_moy = moy_gdp(ssp,country)
+    intensites={}
+    for source in sources:
+        intensites[source]=np.array(list_emi[source][ssp][country]['GHGtot']["2030"])/gdp_moy
+    return intensites
+
 nbreg = len(reg_list)
-print(nbreg)
+print(len(list_emi["CEPII"]["SSP1"]['European Union']['GHGtot']["2030"]))
+exit()
 # cas tout scenarise
-scenario = []
-# scenario = [ [ d_1, [s_1_1, s_1_2,..., s_1_R] ]  ,  [,[]] ]
-cible_EC = 10
+# on tire au hasard un ssp
+
+cible_EC = 10 ## A modifier
 
 def critere(q):
     res=0
-    for s in range(len(scenario)):
+    for s in range(len(ssps)):
+        gdpFR = moy_gdp("SSP.format{s}","France")
         EC=0
         for r in range(nbreg):
-            EC+=q[r]*scenario[s][1][r]
-        EC*=scenario[s][0]
+            distrib_intensite = intensite("SSP.format{s}",reg_list[r])
+            moy_intensite = np.mean(distrib_intensite)
+            EC+=q[r]*moy_intensite
+        EC*=gdpFR
         pis = 1/len(scenario)
         res+= pis * max(EC-cible_EC,0)
     return res
@@ -35,21 +66,27 @@ resu_opti = sco.minimize(critere, q0, constraints=(contrainte_demande))
 
 # cas scenario seulement sur la demande
 scenario = []
-# scenario = [d_1_1,..., d_1_n] n scenario de demande
+# scenario = [d_1_1,..., d_1_5] 5 scenarios de demande
 #distribution sur les s_r
-S1_moy = S0.copy() #exemple
-sigma_r = [1 for r in reg_list] #exemple
-distrib_s = [ [np.random.randn, (S1_moy[reg_list[r]], sigma_r) ] for r in reg_list] #exemple
-# distrib_s = [ [loi_1,params_1],...,[loi_R,params_R] ]
 
 def critere2(q):
     res=0
     M=1e6
     for i in range(M):
-        scen_dem = np.random.randint(1,len(scenario))
-        d = scenario[scen_dem]
-        S = np.array([distrib_s[r][0](*distrib_s[r][1]) for r in range(nbreg)])
-        EC = d*np.dot(q,S)
+        scen_dem = np.random.randint(1,len(ssps))
+        ssp = ssps[scen_dem]
+        gdpFR = moy_gdp(ssp,"France")
+        EC=0
+        for r in range(nbreg):
+            distrib_intensites = []
+            for source in sources:
+                distrib_intensites.append(list_emi[source][ssp][reg_list[r]]['GHGtot']["2030"])
+            distrib_r = np.mean(distrib_intensites,axis=1) #ou = 0 vois si erreur
+            mu = np.mean(distrib_r)
+            std = np.std(distrib_r)
+            my_intensite = std*np.random.randn()+mu
+            EC+=q[r]*my_intensite
+        EC*=gdpFR
         res+= max(0,EC-cible_EC)
     return res/M
 
