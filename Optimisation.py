@@ -28,42 +28,46 @@ def moy_gdp(ssp,country):
     res = []
     for source in sources:
         res.append(GDP_data[source][ssp][country]["2030"])
-    return res.mean()
+    return np.mean(res)
 
 def intensite(ssp,country):
     gdp_moy = moy_gdp(ssp,country)
-    intensites={}
+    intensites=[]
     for source in sources:
-        intensites[source]=np.array(list_emi[source][ssp][country]['GHGtot']["2030"])/gdp_moy
+        intensites.append(np.array(list_emi[source][ssp][country]['GHGtot']["2030"])/gdp_moy)
     return intensites
 
 nbreg = len(reg_list)
-print(len(list_emi["CEPII"]["SSP1"]['European Union']['GHGtot']["2030"]))
-exit()
+#print(len(list_emi["CEPII"]["SSP1"]['European Union']['GHGtot']["2030"]))
+
 # cas tout scenarise
 # on tire au hasard un ssp
 
-cible_EC = 10 ## A modifier
+cible_EC = 100 ## A modifier
 
 def critere(q):
     res=0
     for s in range(len(ssps)):
-        gdpFR = moy_gdp("SSP.format{s}","France")
+        gdpFR = moy_gdp("SSP{}".format(s+1),"France")
         EC=0
         for r in range(nbreg):
-            distrib_intensite = intensite("SSP.format{s}",reg_list[r])
-            moy_intensite = np.mean(distrib_intensite)
-            EC+=q[r]*moy_intensite
+            region = reg_list[r]
+            if region in list(GDP_data["CEPII"]["SSP{}".format(s+1)].keys()) and GDP_data["CEPII"]["SSP{}".format(s+1)][region]["2030"]!=0:
+                distrib_intensite = intensite("SSP{}".format(s+1),reg_list[r])
+                moy_intensite = np.mean(distrib_intensite)
+                EC+=q[r]*moy_intensite
         EC*=gdpFR
-        pis = 1/len(scenario)
+        pis = 1/len(ssps)
         res+= pis * max(EC-cible_EC,0)
+    print(res)
     return res
 
 contrainte_demande = sco.LinearConstraint(A=np.ones(nbreg),lb=1,ub=1)
 
 q0 = np.ones(nbreg)/nbreg
 resu_opti = sco.minimize(critere, q0, constraints=(contrainte_demande))
-
+print(resu_opti.X)
+exit()
 # cas scenario seulement sur la demande
 scenario = []
 # scenario = [d_1_1,..., d_1_5] 5 scenarios de demande
