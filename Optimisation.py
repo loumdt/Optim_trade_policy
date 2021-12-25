@@ -7,7 +7,6 @@ import scipy.optimize as sco
 from scipy.stats import norm
 import json
 
-
 f = open('List_Emi.json')
 list_emi = json.load(f)
 f.close()
@@ -22,7 +21,11 @@ f.close()
 
 sources = list(list_chinaemi.keys())
 ssps = list(list_emi['CEPII'].keys())
-reg_list = list(list_emi['CEPII']['SSP1'].keys())
+reg_list = []
+for r in list(list_emi['CEPII']['SSP1'].keys()):
+    if r in ['LEA','LENA','Transport','WorldOther']:
+        continue
+    reg_list.append(r)
 
 def moy_gdp(ssp,country):
     res = []
@@ -65,17 +68,16 @@ def critere(q):
 contrainte_demande = sco.LinearConstraint(A=np.ones(nbreg),lb=1,ub=1)
 
 q0 = np.ones(nbreg)/nbreg
-resu_opti = sco.minimize(critere, q0, constraints=(contrainte_demande))
-print(resu_opti.X)
-exit()
+#resu_opti = sco.minimize(critere, q0, constraints=(contrainte_demande))
+#print(resu_opti.x)
+
 # cas scenario seulement sur la demande
-scenario = []
 # scenario = [d_1_1,..., d_1_5] 5 scenarios de demande
 #distribution sur les s_r
 
 def critere2(q):
     res=0
-    M=1e6
+    M=int(1e4)
     for i in range(M):
         scen_dem = np.random.randint(1,len(ssps))
         ssp = ssps[scen_dem]
@@ -85,14 +87,19 @@ def critere2(q):
             distrib_intensites = []
             for source in sources:
                 distrib_intensites.append(list_emi[source][ssp][reg_list[r]]['GHGtot']["2030"])
-            distrib_r = np.mean(distrib_intensites,axis=1) #ou = 0 vois si erreur
+            if len(distrib_intensites[0])==0:
+                print(reg_list[r])
+                continue
+            distrib_r = np.mean(distrib_intensites,axis=0)
             mu = np.mean(distrib_r)
             std = np.std(distrib_r)
             my_intensite = std*np.random.randn()+mu
             EC+=q[r]*my_intensite
         EC*=gdpFR
         res+= max(0,EC-cible_EC)
+    print(res/M)
     return res/M
 
 q0 = np.ones(nbreg)/nbreg
 resu_opti2 = sco.minimize(critere2, q0, constraints=(contrainte_demande))
+print(resu_opti2.x)
