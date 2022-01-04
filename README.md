@@ -49,7 +49,7 @@ Soit $\overline{e}_1$ la cible d'empreinte carbone française.
 Soit $d_0$ et $D_1$ la demande française respectivement en $t=0$ et en $t=1$.
  
 $D_1$ est une variable aléatoire. 
-Nous proposons une analyse par scénario de cette variable $D_1$. Sur chaque scénario est posé une probabilité. Ici, les scénarios seront considérés comme équiprobables : 5 scénarios, les SSPs, conduisent à des valeurs différentes du PIB ainsi que des émissions de chaque région du monde $r$. En particulier, ces scénarios permettront de déterminer une valeur pour $D_1$, ainsi que pour les $(S_{1r})_{r \in R}$.
+Nous proposons une analyse par scénario de cette variable $D_1$ ainsi que des $(S_{1r})_{r \in R}$. Sur chaque scénario est posé une probabilité. Ici, les scénarios seront considérés comme équiprobables : 5 scénarios, les SSPs, conduisent à des valeurs différentes du PIB ainsi que des émissions de chaque région du monde $r$. En particulier, ces scénarios permettront de déterminer une valeur pour $D_1$, à partir du PIB, ainsi que pour les $(S_{1r})_{r \in R}$, considérés comme des proxys des intensités carbone du PIB.
 
 
 En cas de dépassement de la cible $\overline{e}_1$, la France recourt à l'achat de quotas : le montant de quotas achetés est appelé $V$.
