@@ -27,6 +27,7 @@ Les différentes régions du monde $r \in R$ sont donc les suivantes :
 | OOEC | Brunei Darussalam, Bahrain, Kuwait, Oman | Autres pays exportateurs de pétrole |
 | ROW NDC | Afghanistan, Albania, Angola, Argentina, Azerbaijan, Bangladesh, Barbados, Benin, Bhutan, Bosnia and Herzegovina, Botswana, Burkina Faso, Burundi, Cambodia, Cameroon, Central African Republic, Chad, Colombia, Comoros, Congo, Congo Democratic Republic, Costa Rica, Djibouti, Dominica, Dominican Republic, Equatorial Guinea, Eritrea, Ethiopia, Gambia, Georgia, Ghana, Grenada, Guatemala, Guinea, Haiti, Jamaica, Kenya, Kiribati, Korea Democratic People's Republic of, Lebanon, Liberia, Macedonia, Madagascar, Maldives, Marshall Islands, Mauritania, Mauritius, Micronesia, Moldova, Mongolia, Morocco, Namibia, Niger, Nigeria, Pakistan, Paraguay, Peru, Saint Kitts and Nevis, Saint Lucia, Saint Vincent and the Grenadines, San Marino, Sao Tome and Principe, Senegal, Serbia and Montenegro, Seychelles, Solomon Islands, Tajikistan, Tanzania, Togo, Trinidad and Tobago, Tunisia, Uganda, Venezuela, Zambia | Reste du monde ayant une NDC  |
 | ROW no NDC | Algeria, Antigua and Barbuda, Armenia, Bahamas, Belize, Bolivia, Cabo Verde, Cook Islands, Cote d'Ivoire, Cuba, Ecuador, El Salvador, Fiji, Gabon, Guinea-Bissau, Guyana, Honduras, Iraq, Israel, Jordan, Kyrgyzstan, Laos, Lesotho, Libya, Malawi, Mali, Mozambique, Myanmar, Nauru, Nepal, Nicaragua, Niue, Palau, Panama, Papua New Guinea, Qatar, Rwanda, Samoa, Sierra Leone, Somalia, Sri Lanka, Sudan, Suriname, Swaziland, Syria, Timor-Leste, Tonga, Turkmenistan, Tuvalu, Uruguay, Uzbekistan, Vanuatu, Yemen, Zimbabwe | Reste du monde n'ayant pas de NDC |
+| Transport | International Aviation, International Shipping | International Transport |
 
 &nbsp;
 
@@ -47,7 +48,7 @@ où les $S_{1r}$ sont des variables aléatoires, et les $(s_{0r})_{r \in R}$ des
 Soit $\overline{e}_1$ la cible d'empreinte carbone française.
 
 Soit $d_0$ et $D_1$ la demande française respectivement en $t=0$ et en $t=1$.
- 
+
 $D_1$ est une variable aléatoire. 
 Nous proposons une analyse par scénario de cette variable $D_1$ ainsi que des $(S_{1r})_{r \in R}$. Sur chaque scénario est posé une probabilité. Ici, les scénarios seront considérés comme équiprobables : 5 scénarios, les SSPs, conduisent à des valeurs différentes du PIB ainsi que des émissions de chaque région du monde $r$. En particulier, ces scénarios permettront de déterminer une valeur pour $D_1$, à partir du PIB, ainsi que pour les $(S_{1r})_{r \in R}$, considérés comme des proxys des intensités carbone du PIB.
 
