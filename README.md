@@ -45,7 +45,7 @@ Soit $S_1$ le vecteur des coefficients d'intensité carbone des différentes ré
 $$ S_1 = (S_{1r})_{r \in R} $$
 où les $S_{1r}$ sont des variables aléatoires, et les $(s_{0r})_{r \in R}$ des paramètres des $(S_{1r})_{r \in R}$.
 
-Soit $\overline{e}_1$ la cible d'empreinte carbone française.
+Soit $\overline{e}_1 = 249$ MtCO$_2$eq la cible d'empreinte carbone française en 2030.
 
 Soit $d_0$ et $D_1$ la demande française respectivement en $t=0$ et en $t=1$.
 
@@ -60,13 +60,27 @@ La demande est nécessairement satisfaite par les quantités produites et import
 
 Critère : 
 
-$$ \underset{q_0, V}{\text{min}} \: \left( \mathbb{E}\left[ V  \right] \right) $$
+$$ \underset{q_0, V}{\text{min}} \: \left( \mathbb{E}\left[ P*V  \right] \right) $$
 
 sous contraintes que :
 
-$$ \sum_{r \in R} q_{0r} \geq 1 $$
+$$ \forall r \in R, q_{0r} \geq 0 $$
+$$ \sum_{r \in R} q_{0r} = 1 $$
 $$ \sum_{r \in R} q_{0r}* D_1 * S_{1r} \leq \overline{e}_1 - V $$
 
 $$\sigma ((q_{0r})_{r \in R}) = \{ \empty , \Omega \}$$
 
 $$\sigma (V) \subset \sigma \left( (S_r)_{r \in R}, D_1 \right) $$
+
+En réalité, nous connaissons la valeur de $V$ :
+
+$$ \left[ D_1 \sum_r q_{0r} S_r - \overline{e} \right] $$
+
+Ainsi, on peut reformuler le critère : 
+
+$$ \underset{q_0}{\text{min}} \: \sum_{s} \pi_s \left( d_1^s \sum_r q_{0r} S_{rs} - \overline{e} \right)_+ $$
+
+sous contraintes que :
+
+$$ \forall r \in R, q_{0r} \geq 0 $$
+$$ \sum_{r \in R} q_{0r} = 1 $$
