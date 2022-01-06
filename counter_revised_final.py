@@ -257,8 +257,8 @@ for emtype in emtypelist:
     emi['European Union'][emtype][year]=np.sum(emi[country][emtype][year] for country in European_Union)
 #
 #--now remove individual countries of EU from WorldUnique list
-WorldUnique=list(World)   #--has to be listed to be duplicated
-for country in European_Union: WorldUnique.remove(country)
+WorldUnique=list(World)   #--has to be listed to be duplicated #Nous on ne le fait pas !
+#for country in European_Union: WorldUnique.remove(country)
 #
 #--Create country groupings
 #--LEA stands for Large Emitters with Absolute target
@@ -868,8 +868,12 @@ Source={'United States':'suppl hypo','European Union':'direct NDC','China':'supp
 #
 #--Gathering all infos on NDCs for countries in one dictionary
 NDC={}
-for country in MainCountries+Transport+OtherAnnex1+OtherEmerging+RestOfWorldNDC+['OtherOil','RestOfWorldNoNDC']:
-  NDC[country]={'high':NDC_high[country], 'low':NDC_low[country], \
+for country in MainCountries+Transport+OtherAnnex1+OtherEmerging+RestOfWorldNDC+['OtherOil','RestOfWorldNoNDC']+European_Union:
+  if country in European_Union:
+    NDC[country]= {'high':NDC_high['European Union'], 'low':NDC_low['European Union'], \
+                 'type':NDC_type['European Union'], 'baseline':Baseline['European Union'], 'source':Source['European Union']}
+  else:
+    NDC[country]={'high':NDC_high[country], 'low':NDC_low[country], \
                  'type':NDC_type[country], 'baseline':Baseline[country], 'source':Source[country]}
 #
 #-------------------------------------------------------------------------------------------------------------------
@@ -968,7 +972,7 @@ for source in GDPsources:
     List_Emi[source][scen]={}
     List_ChinaEmi[source][scen]={}
     List_ChinaIRT[source][scen]=[]
-    for country in WorldUnique+WorldOtherGroups+['LEA','LENA','Transport','WorldOther']:
+    for country in WorldUnique+WorldOtherGroups+['LEA','LENA','Transport','WorldOther']+European_Union:
       List_Emi[source][scen][country]={}
       for emtype in typeOther:
         List_Emi[source][scen][country][emtype]={}
@@ -986,7 +990,7 @@ for source in GDPsources:
         List_WorldEmi[source][scen][emtype][year]=[]
 #
 #--Complete emissions dictionary with 2030 values
-for country in WorldUnique+Transport+['RestOfWorldNDC','RestOfWorldNoNDC']+WorldOtherGroups:
+for country in WorldUnique+Transport+['RestOfWorldNDC','RestOfWorldNoNDC']+WorldOtherGroups+European_Union:
   for emtype in typeOther:
     emi[country][emtype][2030]={}
     for source in GDPsources:
@@ -1035,7 +1039,7 @@ for case in tqdm(range(Ncase)):
   ITrandom.append(random())
   #
   NDCrandom.append(random())
-  for country in MainCountries+Transport+OtherAnnex1+OtherEmerging+RestOfWorldNDC+['OtherOil','RestOfWorldNoNDC']:
+  for country in MainCountries+Transport+OtherAnnex1+OtherEmerging+RestOfWorldNDC+['OtherOil','RestOfWorldNoNDC']+European_Union:
     NDC[country]['value']=NDC[country]['low']+NDCrandom[case]*(NDC[country]['high']-NDC[country]['low'])
   #
   #------------------------------------------------------------------------------------------------------
@@ -1296,28 +1300,28 @@ for scen in SSPscenarios:
 #List_ChinaEmi[source][scen]['GHGtot'][2030]['peak'] and List_ChinaEmi[source][scen]['GHGtot'][2030]['nopeak']
 
 ##Examples
-source='OECD'
-scen='SSP2'
-#
-country='India'
-print( country, source, scen, 'GHG emissions=', \
-               "%.2f" % (np.average(List_Emi[source][scen][country]['GHGtot'][2030])/1.e6),   \
-               '+/-', "%.2f" % (np.std(List_Emi[source][scen][country]['GHGtot'][2030])/1.e6), 'GtCO2eq')
-#
-country='China'
-print( country, source, scen, 'CO2 emissions=', \
-               "%.2f" % (np.average(List_ChinaEmi[source][scen]['co2'][2030]['nopeak'])/1.e6), \
-               '+/-', "%.2f" % (np.std(List_ChinaEmi[source][scen]['co2'][2030]['peak'])/1.e6), 'GtCO2')
-#
-country='China'
-percentile=10.
-print( country, source, scen, str(percentile)+'th percentile of CO2 emissions=', \
-               "%.2f" % (np.percentile(List_ChinaEmi[source][scen]['co2'][2030]['peak'],percentile)/1.e6), 'GtCO2')
-#
-histo, bin_edges=np.histogram(List_ChinaIRT[source][scen],bins=40,range=[-1.,-0.6])
-plt.hist(List_ChinaIRT[source][scen],bins=40,range=[-1.,-0.6])
-plt.show()
-print( country, source, scen, 'histogram of Intensity reduction values for China: ', histo )
+# source='OECD'
+# scen='SSP2'
+# #
+# country='India'
+# print( country, source, scen, 'GHG emissions=', \
+#                "%.2f" % (np.average(List_Emi[source][scen][country]['GHGtot'][2030])/1.e6),   \
+#                '+/-', "%.2f" % (np.std(List_Emi[source][scen][country]['GHGtot'][2030])/1.e6), 'GtCO2eq')
+# #
+# country='China'
+# print( country, source, scen, 'CO2 emissions=', \
+#                "%.2f" % (np.average(List_ChinaEmi[source][scen]['co2'][2030]['nopeak'])/1.e6), \
+#                '+/-', "%.2f" % (np.std(List_ChinaEmi[source][scen]['co2'][2030]['peak'])/1.e6), 'GtCO2')
+# #
+# country='China'
+# percentile=10.
+# print( country, source, scen, str(percentile)+'th percentile of CO2 emissions=', \
+#                "%.2f" % (np.percentile(List_ChinaEmi[source][scen]['co2'][2030]['peak'],percentile)/1.e6), 'GtCO2')
+# #
+# histo, bin_edges=np.histogram(List_ChinaIRT[source][scen],bins=40,range=[-1.,-0.6])
+# plt.hist(List_ChinaIRT[source][scen],bins=40,range=[-1.,-0.6])
+# plt.show()
+# print( country, source, scen, 'histogram of Intensity reduction values for China: ', histo )
 # #
 # #--END
 
