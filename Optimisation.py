@@ -1,12 +1,11 @@
 """ Optimize french trade policy
 """
 
-import pandas as pd
+from cvxpy import constraints
 import numpy as np
 import scipy.optimize as sco
-from scipy.stats import norm
 import json
-from tqdm import tqdm
+import cvxpy as cp
 
 create_little_json = False
 if create_little_json:
@@ -134,15 +133,56 @@ def critere_f_connu(q,ssp):
     res= max(EC-cible_EC,0)
     return res
 
+#construct the problem
+q = cp.Variable(nbreg,nonneg=True)
+v = cp.Variable(nonneg=True)
+prix_quot = cp.Parameter(len(ssps))
+prix_quot.value = [1,2,3,4,5]
+constr = []
+gdpFR = cp.Parameter(len(ssps))
+gdpFR.value = [gdp_france["SSP{}".format(s+1)] for s in range(len(ssps))]
+moy_intens = np.zeros((len(ssps),nbreg))
+for s in range(len(ssps)):
+    for r in range(nbreg):
+        f = open('data_opti/Emi_'+reg_list[r]+'.json')
+        moy_intens[s,r] = json.load(f)["SSP{}".format(s+1)]
+        f.close()
+pis = cp.Parameter()
+pis.value = 1/len(ssps)
+cost=v*pis*cp.sum(prix_quot)
+for s in range(len(ssps)):
+    constr+= [ gdpFR[s]*(moy_intens[s]@q)-v <= cible_EC ]
+constr+=[ q <= 1, cp.sum(q) == 1]
+objective = cp.Minimize(cost)
+prob = cp.Problem(objective,constr)
+result = prob.solve()
+print("Solution CVXPY")
+print(q.value)
+print("Respect contrainte somme : %s"%(np.sum(q.value)==1.))
+print("Respect positivité : %s"%(q.value>=0.))
+print("Valeur objectif : %s"%objective.value)
+
+
+print("Cas où SSP5 est connu")
+x = cp.Variable(nbreg,nonneg=True)
+v2 = cp.Variable(nonneg=True)
+cost2 = v*prix_quot[4]
+const2 = [gdpFR[4]*(moy_intens[4]@x)-v2 <= cible_EC,x <= 1, cp.sum(x) == 1]
+objective2 = cp.Minimize(cost2)
+prob2 = cp.Problem(objective2,const2)
+result2 = prob2.solve()
+print(x.value)
+
+
 cons=[{'type': 'eq', 'fun': lambda x:  np.sum(x)-1}]
 cons=tuple(cons)
 
 q0 = np.ones(nbreg)/nbreg
-q0 = np.zeros(nbreg)
-q0[0] = 0.5
-q0[5]=0.5
-print(q0)
+#q0 = np.zeros(nbreg)
+#q0[0] = 0.5
+#q0[5]=0.5
 #print(critere(q0))
 #print(critere_f_connu(q0,"SSP5"))
-resu_opti = sco.minimize(critere, q0,bounds=[(0.,1.) for i in range(nbreg)], constraints=cons)
-print(resu_opti)
+resu_opti = sco.minimize(critere, q0,method='SLSQP',bounds=[(0.,1.) for i in range(nbreg)], constraints=cons)
+print("Solution de scipy")
+print(resu_opti.x)
