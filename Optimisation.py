@@ -3,6 +3,7 @@
 
 from cvxpy import constraints
 import numpy as np
+from numpy.core.einsumfunc import _greedy_path
 import scipy.optimize as sco
 import json
 import cvxpy as cp
@@ -142,24 +143,28 @@ constr = []
 gdpFR = cp.Parameter(len(ssps))
 gdpFR.value = [gdp_france["SSP{}".format(s+1)] for s in range(len(ssps))]
 moy_intens = np.zeros((len(ssps),nbreg))
+
 for s in range(len(ssps)):
     for r in range(nbreg):
         f = open('data_opti/Emi_'+reg_list[r]+'.json')
         moy_intens[s,r] = json.load(f)["SSP{}".format(s+1)]
         f.close()
+
 pis = cp.Parameter()
 pis.value = 1/len(ssps)
 cost=v*pis*cp.sum(prix_quot)
+
 for s in range(len(ssps)):
     constr+= [ gdpFR[s]*(moy_intens[s]@q)-v <= cible_EC ]
+
 constr+=[ q <= 1, cp.sum(q) == 1]
 objective = cp.Minimize(cost)
 prob = cp.Problem(objective,constr)
 result = prob.solve()
 print("Solution CVXPY")
 print(q.value)
-print("Respect contrainte somme : %s"%(np.sum(q.value)==1.))
-print("Respect positivité : %s"%(q.value>=0.))
+print("Respect contrainte somme : %s"%(np.isclose(np.sum(q.value),1., rtol=1e-10, atol=1e-10)))
+print("Respect positivité : %s"%(q.value>=0.).all())
 print("Valeur objectif : %s"%objective.value)
 
 
@@ -186,3 +191,34 @@ q0 = np.ones(nbreg)/nbreg
 resu_opti = sco.minimize(critere, q0,method='SLSQP',bounds=[(0.,1.) for i in range(nbreg)], constraints=cons)
 print("Solution de scipy")
 print(resu_opti.x)
+
+#%% CVXPY 2nd formulation
+#construct the problem with the secon formulation :
+q = cp.Variable(nbreg,nonneg=True)
+constr = []
+gdpFR = cp.Parameter(len(ssps))
+gdpFR.value = [gdp_france["SSP{}".format(s+1)] for s in range(len(ssps))]
+moy_intens = np.zeros((len(ssps),nbreg))
+
+for s in range(len(ssps)):
+    for r in range(nbreg):
+        f = open('data_opti/Emi_'+reg_list[r]+'.json')
+        moy_intens[s,r] = json.load(f)["SSP{}".format(s+1)]
+        f.close()
+
+pis = cp.Parameter()
+pis.value = 1/len(ssps)
+
+crit = 0
+for s in range(len(ssps)):
+    crit += pis.value*cp.pos(gdpFR[s]*moy_intens[s]@q-cible_EC)
+
+constr+=[ q <= 1, cp.sum(q) == 1]
+objective = cp.Minimize(crit)
+prob = cp.Problem(objective,constr)
+result = prob.solve()
+print("Solution CVXPY")
+print(q.value)
+print("Respect contrainte somme : %s"%(np.isclose(np.sum(q.value),1., rtol=1e-10, atol=1e-10)))
+print("Respect positivité : %s"%(q.value>=0.).all())
+print("Valeur objectif : %s"%objective.value)
