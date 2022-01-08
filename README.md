@@ -74,7 +74,7 @@ $$\sigma (V) \subset \sigma \left( (S_r)_{r \in R}, D_1 \right) $$
 
 En réalité, nous connaissons la valeur de $V$ :
 
-$$ \left[ D_1 \sum_r q_{0r} S_r - \overline{e} \right] $$
+$$ V = \left[ D_1 \sum_r q_{0r} S_r - \overline{e} \right]_+ $$
 
 Ainsi, on peut reformuler le critère : 
 
