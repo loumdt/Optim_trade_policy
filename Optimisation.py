@@ -134,6 +134,13 @@ for s in range(len(ssps)):
         distrib_intes[r,s,:] = dis
         f.close()
 
+#reg_list = ['Austria', 'Belgium', 'China', 'France',  'Germany', 'Ireland', 'Italy', 'Netherlands', 'Poland',
+# 'Portugal', 'Russian Federation', 'Saudi Arabia', 'Spain', 'Sweden', 'Switzerland', 'Turkey', 'United Kingdom','United States']
+# Pour la contrainte de capcacite d exportation
+qactuel = [0.3*0.012,0.3*0.1235,0.3*0.055,0.7,0.3*0.275,0.3*0.012,0.3*0.11,0.3*0.099,0.3*0.02,0.3*0.01,0.3*0.012,0.3*0.01,0.3*0.093,0.3*0.0075,
+ 0.3*0.0275,0.3*0.0065,0.3*0.042,0.3*0.085]
+pct_exportmax = 0.3
+qmax = (1+ pct_exportmax)*np.array(qactuel)
 
 ###################################################################################################
 # Méthode 1 : scenario avec prix du C
@@ -154,7 +161,7 @@ for s in range(len(ssps)):
     for source in range(len(sources)):
         constr+= [ gdpFR[s][source]*(moy_intens[s,source]@q)-v <= cible_EC ]
 
-constr+=[ q <= 1, cp.sum(q) == 1]
+constr+=[ q <= 1, cp.sum(q) == 1, q <= qmax]
 objective = cp.Minimize(cost)
 prob = cp.Problem(objective,constr)
 result = prob.solve()
@@ -162,8 +169,8 @@ print("Solution CVXPY")
 print(q.value)
 print("Respect contrainte somme : %s"%(np.isclose(np.sum(q.value),1., rtol=1e-5, atol=1e-5)))
 print("Respect positivité : %s"%(q.value>=0.).all())
+print("Respect capacité : %s"%(qmax-q.value >= -1e-6).all())
 print("Valeur objectif : %s"%objective.value)
-
 
 # print("Cas où SSP5 est connu")
 # x = cp.Variable(nbreg,nonneg=True)
@@ -191,7 +198,7 @@ for s in range(len(ssps)):
     for source in range(len(sources)):
         crit += pis.value*cp.pos(gdpFR[s][source]*moy_intens[s,source]@q-cible_EC)
 
-constr+=[ q <= 1, cp.sum(q) == 1]
+constr+=[ q <= 1, cp.sum(q) == 1, q <= qmax]
 objective = cp.Minimize(crit)
 prob = cp.Problem(objective,constr)
 result = prob.solve()
@@ -199,6 +206,7 @@ print("Solution CVXPY")
 print(q.value)
 print("Respect contrainte somme : %s"%(np.isclose(np.sum(q.value),1., rtol=1e-5, atol=1e-5)))
 print("Respect positivité : %s"%(q.value>=0.).all())
+print("Respect capacité : %s"%(qmax-q.value >= -1e-6).all())
 print("Valeur objectif : %s"%objective.value)
 
 
@@ -219,15 +227,15 @@ for i in range(M):
     gdp_FR = np.mean([gdpFR[s][source] for source in range(len(sources))])/M
     crit += cp.pos(gdp_FR*intens@q-cible_EC/M)
 
-constr+=[ q <= 1, cp.sum(q) == 1]
+constr+=[ q <= 1, cp.sum(q) == 1, q <= qmax]
 objective = cp.Minimize(crit)
 prob = cp.Problem(objective,constr)
 result = prob.solve()
 print("Solution CVXPY")
 print(q.value)
-print(np.sum(q.value))
 print("Respect contrainte somme : %s"%(np.isclose(np.sum(q.value),1., rtol=1e-5, atol=1e-5)))
 print("Respect positivité : %s"%(q.value>=0.).all())
+print("Respect capacité : %s"%(qmax-q.value >= -1e-6).all())
 print("Valeur objectif : %s"%objective.value)
 
 
@@ -251,42 +259,55 @@ def criteredis(ssp,my_q):
 Nbiter = 100000
 val_opti = np.zeros(Nbiter)
 val_stratmoy = np.zeros(Nbiter)
-val_china = np.zeros(Nbiter)
 val_deuxpays = np.zeros(Nbiter)
 val_actuelle = np.zeros(Nbiter)
 q2p = np.zeros(nbreg)
-q2p[4]=0.5
-q2p[-1]=0.5
-qturq = np.zeros(nbreg)
-qturq[2] = 1
+q2p[3]=0.7
+if qmax[4]>= 0.5:
+    q2p[4]=0.5
+else:
+    q2p[4]=qmax[4]
+if qmax[-1]>= 0.5:
+    q2p[-1]=0.5
+else:
+    q2p[-1]=qmax[-1]
+remaining = 0.3 - np.sum([qactuel[i]*(reg_list[i]!='France')*(reg_list[i]!='Germany')*(reg_list[i]!='United States') for i in range(nbreg)])
+for i in range(nbreg):
+    if i != 3 and i!=4 and i!=17:
+        q2p[i] = remaining/15
+
+qmoy = np.zeros(nbreg)
+for i in range(nbreg):
+    if reg_list[i]!='France' and reg_list[i]!='Germany' and reg_list[i]!='United States':
+        qmoy[i] = 0.3/(nbreg-1)
+    else:
+        qmoy[i]=0.7
+
 #reg_list = ['Austria', 'Belgium', 'China', 'France',  'Germany', 'Ireland', 'Italy', 'Netherlands', 'Poland',
 # 'Portugal', 'Russian Federation', 'Saudi Arabia', 'Spain', 'Sweden', 'Switzerland', 'Turkey', 'United Kingdom','United States']
-qactuel = [0.3*0.012,0.3*0.125,0.3*0.055,0.7,0.3*0.275,0.3*0.012,0.3*0.11,0.3*0.099,0.3*0.02,0.3*0.01,0.3*0.012,0.3*0.01,0.3*0.093,0.3*0.012,
- 0.3*0.032,0.3*0.011,0.3*0.042,0.3*0.085]
+qactuel = [0.3*0.012,0.3*0.1235,0.3*0.055,0.7,0.3*0.275,0.3*0.012,0.3*0.11,0.3*0.099,0.3*0.02,0.3*0.01,0.3*0.012,0.3*0.01,0.3*0.093,0.3*0.0075,
+ 0.3*0.0275,0.3*0.0065,0.3*0.042,0.3*0.085]
 moyennes=False
 for i in range(Nbiter):
     if moyennes:    
         s = np.random.randint(0,len(ssps))
         source = np.random.randint(0,len(sources))
         val_opti[i]=criteremoy(s,source,q_opti)
-        val_stratmoy[i]=criteremoy(s,source,np.ones(nbreg)/nbreg)
-        val_china[i]=criteremoy(s,source,qturq)
+        val_stratmoy[i]=criteremoy(s,source,qmoy)
         val_deuxpays[i]=criteremoy(s,source,q2p)
         val_actuelle[i]=criteremoy(s,source,qactuel)
     else:
         s = np.random.randint(0,len(ssps))
         val_opti[i]=criteredis(s,q_opti)
-        val_stratmoy[i]=criteredis(s,np.ones(nbreg)/nbreg)
-        val_china[i]=criteredis(s,qturq)
+        val_stratmoy[i]=criteredis(s,qmoy)
         val_deuxpays[i]=criteredis(s,q2p)
         val_actuelle[i]=criteredis(s,qactuel)
 
 fig,ax = plt.subplots()
-#ax.hist(val_stratmoy,bins=300,color="green",alpha=0.5,label="strat moy")
-ax.hist(np.log(val_china+1),bins=300,color="red",alpha=0.5,label="100% Chine")
-ax.hist(np.log(val_opti+1),bins=300,color="black",label="Opti")
-ax.hist(np.log(val_deuxpays+1),bins=300,color="blue",alpha=0.5,label="Germany-USA")
-ax.hist(np.log(val_actuelle+1),bins=300,color="orange",alpha=0.5,label="Actuelle")
-plt.xlabel("echelle log(x+1)")
+ax.hist(val_stratmoy,bins=300,color="green",alpha=0.5,label="strat moy")
+ax.hist(val_opti,bins=300,color="black",label="Opti")
+ax.hist(val_deuxpays,bins=300,color="blue",alpha=0.5,label="Germany-USA")
+ax.hist(val_actuelle,bins=300,color="orange",alpha=0.5,label="Actuelle")
+plt.xlabel(" ")
 plt.legend()
 plt.show()
