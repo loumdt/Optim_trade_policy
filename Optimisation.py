@@ -9,6 +9,7 @@ import scipy.optimize as sco
 from scipy.stats import norm
 import json
 import cvxpy as cp
+import pandas as pd
 
 create_little_json =False
 if create_little_json:
@@ -23,6 +24,7 @@ if create_little_json:
     f=open('GDP_data.json')
     GDP_data = json.load(f)
     f.close()
+
 
 sources = ['CEPII','OECD','IIASA','PIK']
 ssps = ['SSP1','SSP2','SSP3','SSP4','SSP5']
@@ -98,8 +100,14 @@ if create_little_json:
 #  'Switzerland', 'Tajikistan', 'Tanzania_United Republic of', 'Thailand', 'Togo', 'Trinidad and Tobago',
 #  'Tunisia', 'Turkey', 'Turkmenistan', 'Uganda', 'Ukraine', 'United Arab Emirates', 'United Kingdom',
 #  'United States', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Venezuela', 'Viet Nam', 'Yemen', 'Zambia']
-reg_list = ['Austria', 'Belgium', 'China', 'France',  'Germany', 'Ireland', 'Italy', 'Netherlands', 'Poland',
- 'Portugal', 'Russian Federation', 'Saudi Arabia', 'Spain', 'Sweden', 'Switzerland', 'Turkey', 'United Kingdom','United States']
+
+data_countries=pd.read_excel("List_Countries.xlsx")
+reg_list = np.array([data_countries.loc[:,'Countries']])
+#reg_list = np.append(reg_list,'RoW')
+reg_list = np.append(reg_list,'France')
+
+#reg_list = ['Austria', 'Belgium', 'China', 'France',  'Germany', 'Ireland', 'Italy', 'Netherlands', 'Poland',
+# 'Portugal', 'Russian Federation', 'Saudi Arabia', 'Spain', 'Sweden', 'Switzerland', 'Turkey', 'United Kingdom','United States']
 # reg_list = ['Argentina', 'Australia', 'Austria', 'Belgium','Brazil', 'Canada', 'Croatia', 'Czech Republic', 'Denmark',
 # 'Egypt', 'Estonia','Finland', 'France', 'Georgia', 'Germany', 'Greece', 'Hungary', 'India', 'Ireland', 'Israel',
 # 'Italy', 'Japan', 'Korea, Republic of', 'Lithuania', 'Luxembourg', 'Mexico', 'Morocco', 'Netherlands',
@@ -137,11 +145,16 @@ for s in range(len(ssps)):
 #reg_list = ['Austria', 'Belgium', 'China', 'France',  'Germany', 'Ireland', 'Italy', 'Netherlands', 'Poland',
 # 'Portugal', 'Russian Federation', 'Saudi Arabia', 'Spain', 'Sweden', 'Switzerland', 'Turkey', 'United Kingdom','United States']
 # Pour la contrainte de capcacite d exportation
-qactuel = [0.3*0.012,0.3*0.1235,0.3*0.055,0.7,0.3*0.275,0.3*0.012,0.3*0.11,0.3*0.099,0.3*0.02,0.3*0.01,0.3*0.012,0.3*0.01,0.3*0.093,0.3*0.0075,
- 0.3*0.0275,0.3*0.0065,0.3*0.042,0.3*0.085]
+
+qactuel = 0.3*np.array(data_countries.loc[:,'Share']/100)
+#qactuel = np.append(qactuel,0)
+qactuel = np.append(qactuel,0.7)
+
+#qactuel = [0.3*0.012,0.3*0.1235,0.3*0.055,0.7,0.3*0.275,0.3*0.012,0.3*0.11,0.3*0.099,0.3*0.02,0.3*0.01,0.3*0.012,0.3*0.01,0.3*0.093,0.3*0.0075,
+# 0.3*0.0275,0.3*0.0065,0.3*0.042,0.3*0.085]
 pct_exportmax = 0.3
 qmax = (1+ pct_exportmax)*np.array(qactuel)
-
+qmax[-1]=qactuel[-1]
 ###################################################################################################
 # Méthode 1 : scenario avec prix du C
 ###################################################################################################
@@ -161,7 +174,7 @@ for s in range(len(ssps)):
     for source in range(len(sources)):
         constr+= [ gdpFR[s][source]*(moy_intens[s,source]@q)-v <= cible_EC ]
 
-constr+=[ q <= 1, cp.sum(q) == 1, q <= qmax]
+constr+=[q <= 1, cp.sum(q) == 1, q <= qmax]
 objective = cp.Minimize(cost)
 prob = cp.Problem(objective,constr)
 result = prob.solve()
@@ -227,7 +240,7 @@ for i in range(M):
     gdp_FR = np.mean([gdpFR[s][source] for source in range(len(sources))])/M
     crit += cp.pos(gdp_FR*intens@q-cible_EC/M)
 
-constr+=[ q <= 1, cp.sum(q) == 1, q <= qmax]
+constr+=[q<=1, cp.sum(q) == 1, q <= qmax]
 objective = cp.Minimize(crit)
 prob = cp.Problem(objective,constr)
 result = prob.solve()
@@ -285,8 +298,8 @@ for i in range(nbreg):
 
 #reg_list = ['Austria', 'Belgium', 'China', 'France',  'Germany', 'Ireland', 'Italy', 'Netherlands', 'Poland',
 # 'Portugal', 'Russian Federation', 'Saudi Arabia', 'Spain', 'Sweden', 'Switzerland', 'Turkey', 'United Kingdom','United States']
-qactuel = [0.3*0.012,0.3*0.1235,0.3*0.055,0.7,0.3*0.275,0.3*0.012,0.3*0.11,0.3*0.099,0.3*0.02,0.3*0.01,0.3*0.012,0.3*0.01,0.3*0.093,0.3*0.0075,
- 0.3*0.0275,0.3*0.0065,0.3*0.042,0.3*0.085]
+#qactuel = [0.3*0.012,0.3*0.1235,0.3*0.055,0.7,0.3*0.275,0.3*0.012,0.3*0.11,0.3*0.099,0.3*0.02,0.3*0.01,0.3*0.012,0.3*0.01,0.3*0.093,0.3*0.0075,
+# 0.3*0.0275,0.3*0.0065,0.3*0.042,0.3*0.085]
 moyennes=False
 for i in range(Nbiter):
     if moyennes:    
@@ -303,11 +316,14 @@ for i in range(Nbiter):
         val_deuxpays[i]=criteredis(s,q2p)
         val_actuelle[i]=criteredis(s,qactuel)
 
-fig,ax = plt.subplots()
+fig,ax = plt.subplots(figsize=(18,12))
 ax.hist(val_stratmoy,bins=300,color="green",alpha=0.5,label="strat moy")
 ax.hist(val_opti,bins=300,color="black",label="Opti")
-ax.hist(val_deuxpays,bins=300,color="blue",alpha=0.5,label="Germany-USA")
+ax.hist(val_deuxpays,bins=300,color="blue",alpha=0.5,label="Allemagne-USA")
 ax.hist(val_actuelle,bins=300,color="orange",alpha=0.5,label="Actuelle")
-plt.xlabel(" ")
-plt.legend()
+plt.xlabel("Critère",size=20)
+plt.ylabel("Fréquence",size=20)
+plt.legend(prop={'size': 20})
+plt.grid()
+plt.savefig("D:/Ubuntu/M2_EEET/Optimisation_incertain/Optim_trade_policy/histo_reponse_opti.png")
 plt.show()
