@@ -103,7 +103,7 @@ if create_little_json:
 
 data_countries=pd.read_excel("List_Countries.xlsx")
 reg_list = np.array([data_countries.loc[:,'Countries']])
-#reg_list = np.append(reg_list,'RoW')
+
 reg_list = np.append(reg_list,'France')
 
 #reg_list = ['Austria', 'Belgium', 'China', 'France',  'Germany', 'Ireland', 'Italy', 'Netherlands', 'Poland',
@@ -149,12 +149,14 @@ for s in range(len(ssps)):
 qactuel = 0.3*np.array(data_countries.loc[:,'Share']/100)
 #qactuel = np.append(qactuel,0)
 qactuel = np.append(qactuel,0.7)
+print(qactuel)
 
 #qactuel = [0.3*0.012,0.3*0.1235,0.3*0.055,0.7,0.3*0.275,0.3*0.012,0.3*0.11,0.3*0.099,0.3*0.02,0.3*0.01,0.3*0.012,0.3*0.01,0.3*0.093,0.3*0.0075,
 # 0.3*0.0275,0.3*0.0065,0.3*0.042,0.3*0.085]
 pct_exportmax = 0.3
 qmax = (1+ pct_exportmax)*np.array(qactuel)
-qmax[-1]=qactuel[-1]
+qmax[-1]=1.05*qactuel[-1]
+
 ###################################################################################################
 # Méthode 1 : scenario avec prix du C
 ###################################################################################################
@@ -243,7 +245,7 @@ for i in range(M):
 constr+=[q<=1, cp.sum(q) == 1, q <= qmax]
 objective = cp.Minimize(crit)
 prob = cp.Problem(objective,constr)
-result = prob.solve()
+result = prob.solve(verbose=True,max_iters=1000)
 print("Solution CVXPY")
 print(q.value)
 print("Respect contrainte somme : %s"%(np.isclose(np.sum(q.value),1., rtol=1e-5, atol=1e-5)))
@@ -286,12 +288,12 @@ else:
     q2p[-1]=qmax[-1]
 remaining = 0.3 - np.sum([qactuel[i]*(reg_list[i]!='France')*(reg_list[i]!='Germany')*(reg_list[i]!='United States') for i in range(nbreg)])
 for i in range(nbreg):
-    if i != 3 and i!=4 and i!=17:
+    if reg_list[i]!='France' and reg_list[i]!='Germany' and reg_list[i]!='United States':
         q2p[i] = remaining/15
 
 qmoy = np.zeros(nbreg)
 for i in range(nbreg):
-    if reg_list[i]!='France' and reg_list[i]!='Germany' and reg_list[i]!='United States':
+    if reg_list[i]!='France':
         qmoy[i] = 0.3/(nbreg-1)
     else:
         qmoy[i]=0.7
@@ -325,5 +327,5 @@ plt.xlabel("Critère",size=20)
 plt.ylabel("Fréquence",size=20)
 plt.legend(prop={'size': 20})
 plt.grid()
-plt.savefig("D:/Ubuntu/M2_EEET/Optimisation_incertain/Optim_trade_policy/histo_reponse_opti.png")
+#plt.savefig("D:/Ubuntu/M2_EEET/Optimisation_incertain/Optim_trade_policy/histo_reponse_opti.png")
 plt.show()
