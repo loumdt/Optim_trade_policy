@@ -155,7 +155,7 @@ print(qactuel)
 # 0.3*0.0275,0.3*0.0065,0.3*0.042,0.3*0.085]
 pct_exportmax = 0.3
 qmax = (1+ pct_exportmax)*np.array(qactuel)
-qmax[-1]=1.05*qactuel[-1]
+#qmax[-1]=1.05*qactuel[-1]
 
 ###################################################################################################
 # Méthode 1 : scenario avec prix du C
@@ -217,13 +217,13 @@ constr+=[ q <= 1, cp.sum(q) == 1, q <= qmax]
 objective = cp.Minimize(crit)
 prob = cp.Problem(objective,constr)
 result = prob.solve()
-print("Solution CVXPY")
+print("Solution CVXPY - Scénarios")
 print(q.value)
 print("Respect contrainte somme : %s"%(np.isclose(np.sum(q.value),1., rtol=1e-5, atol=1e-5)))
 print("Respect positivité : %s"%(q.value>=0.).all())
 print("Respect capacité : %s"%(qmax-q.value >= -1e-6).all())
 print("Valeur objectif : %s"%objective.value)
-
+q_opti_scenar = q.value
 
 ###################################################################################################
 # Méthode 3 : SSP pour GDP et distrib normale pour emi associée au SSP tiré
@@ -238,41 +238,63 @@ M = 10000
 crit = 0
 for i in range(M):
     s= np.random.randint(0,len(ssps))
+    source_gdp = np.random.randint(0,len(sources))
     intens = np.array([np.random.normal(distrib_intes[r,s,0],distrib_intes[r,s,1]) for r in range(nbreg)])
-    gdp_FR = np.mean([gdpFR[s][source] for source in range(len(sources))])/M
+    gdp_FR = gdpFR[s][source_gdp]/M
     crit += cp.pos(gdp_FR*intens@q-cible_EC/M)
 
 constr+=[q<=1, cp.sum(q) == 1, q <= qmax]
 objective = cp.Minimize(crit)
 prob = cp.Problem(objective,constr)
-result = prob.solve(verbose=True,max_iters=1000)
-print("Solution CVXPY")
+result = prob.solve(max_iters=1000)
+print("Solution CVXPY - Gaussiennes")
 print(q.value)
 print("Respect contrainte somme : %s"%(np.isclose(np.sum(q.value),1., rtol=1e-5, atol=1e-5)))
 print("Respect positivité : %s"%(q.value>=0.).all())
 print("Respect capacité : %s"%(qmax-q.value >= -1e-6).all())
 print("Valeur objectif : %s"%objective.value)
+q_opti = q.value
+###################################################################################################
+# Optimisation dans le cas d'un futur connu - SSP connu et intensite = moyenne de la distrib gaussienne
+###################################################################################################
+q = cp.Variable(nbreg,nonneg=True)
+constr = []
+#SSP connu
+s = 2
+source_gdp=0
+intens = moy_intens[s,source_gdp] #emissions connues
+gdp_FR = gdpFR[s][source_gdp] #pib connu
+crit = cp.pos(gdp_FR*intens@q-cible_EC)
 
+constr+=[q<=1, cp.sum(q) == 1, q <= qmax]
+objective = cp.Minimize(crit)
+prob = cp.Problem(objective,constr)
+result = prob.solve(max_iters=1000)
+print("Solution CVXPY - Cas déterministe")
+print(q.value)
+print("Respect contrainte somme : %s"%(np.isclose(np.sum(q.value),1., rtol=1e-5, atol=1e-5)))
+print("Respect positivité : %s"%(q.value>=0.).all())
+print("Respect capacité : %s"%(qmax-q.value >= -1e-6).all())
+print("Valeur objectif : %s"%objective.value)
+q_deterministe = q.value
 
 ###################################################################################################
 # Histogramme des réponses
 ###################################################################################################
 #%% Histogrammes de reponse
 # Test de la politique optimale
-q_opti = q.value
-
 def criteremoy(ssp,source,my_q):
     curr_gdpFR = gdp_france["SSP{}".format(ssp+1)][sources[source]]
     return max(curr_gdpFR*(np.dot(moy_intens[ssp,source],my_q))-cible_EC,0)
 
-def criteredis(ssp,my_q):
-    curr_gdpFR = np.mean([gdp_france["SSP{}".format(ssp+1)][sources[source]] for source in range(len(sources))])
-    intens = np.array([np.random.normal(distrib_intes[r,ssp,0],distrib_intes[r,ssp,1]) for r in range(nbreg)])
+def criteredis(my_q,intens,curr_gdpFR):
     return max(curr_gdpFR*(np.dot(intens,my_q))-cible_EC,0)
 
 
 Nbiter = 100000
 val_opti = np.zeros(Nbiter)
+val_opti_scenar = np.zeros(Nbiter)
+val_opti_deterministe = np.zeros(Nbiter)
 val_stratmoy = np.zeros(Nbiter)
 val_deuxpays = np.zeros(Nbiter)
 val_actuelle = np.zeros(Nbiter)
@@ -308,24 +330,52 @@ for i in range(Nbiter):
         s = np.random.randint(0,len(ssps))
         source = np.random.randint(0,len(sources))
         val_opti[i]=criteremoy(s,source,q_opti)
+        val_opti_scenar[i]=criteremoy(s,q_opti_scenar)
         val_stratmoy[i]=criteremoy(s,source,qmoy)
         val_deuxpays[i]=criteremoy(s,source,q2p)
         val_actuelle[i]=criteremoy(s,source,qactuel)
+        val_opti_deterministe[i]=criteremoy(s,source,q_deterministe)
     else:
         s = np.random.randint(0,len(ssps))
-        val_opti[i]=criteredis(s,q_opti)
-        val_stratmoy[i]=criteredis(s,qmoy)
-        val_deuxpays[i]=criteredis(s,q2p)
-        val_actuelle[i]=criteredis(s,qactuel)
+        source_gdp = np.random.randint(0,len(sources))
+        gdp_FRcurr = gdp_france[ssps[s]][sources[source_gdp]]
+        intens = np.array([np.random.normal(distrib_intes[r,s,0],distrib_intes[r,s,1]) for r in range(nbreg)])
+        val_opti[i]=criteredis(q_opti,intens,gdp_FRcurr)
+        val_opti_scenar[i]=criteredis(q_opti_scenar,intens,gdp_FRcurr)
+        val_stratmoy[i]=criteredis(qmoy,intens,gdp_FRcurr)
+        val_deuxpays[i]=criteredis(q2p,intens,gdp_FRcurr)
+        val_actuelle[i]=criteredis(qactuel,intens,gdp_FRcurr)
+        val_opti_deterministe[i]=criteredis(q_deterministe,intens,gdp_FRcurr)
+
 
 fig,ax = plt.subplots(figsize=(18,12))
-ax.hist(val_stratmoy,bins=300,color="green",alpha=0.5,label="strat moy")
-ax.hist(val_opti,bins=300,color="black",label="Opti")
-ax.hist(val_deuxpays,bins=300,color="blue",alpha=0.5,label="Allemagne-USA")
+ax.hist(val_stratmoy,bins=300,color="green",alpha=0.75,label="strat moy")
+ax.hist(val_deuxpays,bins=300,color="blue",alpha=0.25,label="Allemagne-USA")
 ax.hist(val_actuelle,bins=300,color="orange",alpha=0.5,label="Actuelle")
+ax.hist(val_opti,bins=300,color="black",label="Opti gaussiennes")
 plt.xlabel("Critère",size=20)
 plt.ylabel("Fréquence",size=20)
 plt.legend(prop={'size': 20})
 plt.grid()
-#plt.savefig("D:/Ubuntu/M2_EEET/Optimisation_incertain/Optim_trade_policy/histo_reponse_opti.png")
+plt.show()
+
+fig,ax = plt.subplots(figsize=(18,12))
+ax.hist(val_stratmoy,bins=300,color="green",alpha=0.75,label="strat moy")
+ax.hist(val_deuxpays,bins=300,color="blue",alpha=0.25,label="Allemagne-USA")
+ax.hist(val_actuelle,bins=300,color="orange",alpha=0.5,label="Actuelle")
+ax.hist(val_opti_scenar,bins=300,color="black",label="Opti par scenario")
+plt.xlabel("Critère",size=20)
+plt.ylabel("Fréquence",size=20)
+plt.legend(prop={'size': 20})
+plt.grid()
+plt.show()
+
+fig,ax = plt.subplots(figsize=(18,12))
+ax.hist(val_opti_deterministe,bins=300,color="red",alpha=0.45,label="Opti déterministe")
+ax.hist(val_opti_scenar,bins=300,color="green",alpha=0.45,label="Opti par scenario")
+ax.hist(val_opti,bins=300,color="blue",alpha=0.45,label="Opti gaussiennes")
+plt.xlabel("Critère",size=20)
+plt.ylabel("Fréquence",size=20)
+plt.legend(prop={'size': 20})
+plt.grid()
 plt.show()
