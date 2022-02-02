@@ -155,7 +155,7 @@ print(qactuel)
 # 0.3*0.0275,0.3*0.0065,0.3*0.042,0.3*0.085]
 pct_exportmax = 0.3
 qmax = (1+ pct_exportmax)*np.array(qactuel)
-#qmax[-1]=1.05*qactuel[-1]
+qmax[-1]=qactuel[-1]
 
 ###################################################################################################
 # Méthode 1 : scenario avec prix du C
@@ -260,8 +260,8 @@ q_opti = q.value
 q = cp.Variable(nbreg,nonneg=True)
 constr = []
 #SSP connu
-s = 2
-source_gdp=0
+s = 0
+source_gdp=2
 intens = moy_intens[s,source_gdp] #emissions connues
 gdp_FR = gdpFR[s][source_gdp] #pib connu
 crit = cp.pos(gdp_FR*intens@q-cible_EC)
@@ -373,9 +373,35 @@ plt.show()
 fig,ax = plt.subplots(figsize=(18,12))
 ax.hist(val_opti_deterministe,bins=300,color="red",alpha=0.45,label="Opti déterministe")
 ax.hist(val_opti_scenar,bins=300,color="green",alpha=0.45,label="Opti par scenario")
+plt.xlabel("Critère",size=20)
+plt.ylabel("Fréquence",size=20)
+plt.legend(prop={'size': 20})
+plt.grid()
+plt.show()
+
+fig,ax = plt.subplots(figsize=(18,12))
+ax.hist(val_opti_deterministe,bins=300,color="red",alpha=0.45,label="Opti déterministe")
 ax.hist(val_opti,bins=300,color="blue",alpha=0.45,label="Opti gaussiennes")
 plt.xlabel("Critère",size=20)
 plt.ylabel("Fréquence",size=20)
 plt.legend(prop={'size': 20})
 plt.grid()
 plt.show()
+
+########################################################################################################
+# Calcul de distances de Kullback-Leiber
+########################################################################################################
+
+def kull(val1,val2):
+    nb_bins = 300
+    hist1=np.histogram(val1,bins=nb_bins)[0]
+    hist2=np.histogram(val2,bins=nb_bins)[0]
+    res=0
+    for i in range(nb_bins):
+        if hist1[i]!=0 and hist2[i] !=0:
+            res+= hist1[i] * np.log(hist1[i] / hist2[i])
+    return res
+
+print("Divergence de K-L")
+print("Opti vs Deterministe : %s"%kull(val_opti,val_opti_deterministe))
+print("Opti vs Scenar : %s"%kull(val_opti,val_opti_scenar))
