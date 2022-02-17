@@ -162,30 +162,30 @@ qmax[-1]=qactuel[-1]
 ###################################################################################################
 #%% Avec un prix du carbone et la nouvelle formulation
 #construct the problem
-q = cp.Variable(nbreg,nonneg=True)
-v = cp.Variable(nonneg=True)
-prix_quot = cp.Parameter(len(ssps))
-prix_quot.value = [1,2,3,4,5]
-constr = []
+# q = cp.Variable(nbreg,nonneg=True)
+# v = cp.Variable(nonneg=True)
+# prix_quot = cp.Parameter(len(ssps))
+# prix_quot.value = [1,2,5,3,4]
+# constr = []
 
-pis = cp.Parameter()
-pis.value = 1/(len(ssps)*len(sources))
-cost=v*pis*cp.sum(prix_quot)
+# pis = cp.Parameter()
+# pis.value = 1/(len(ssps)*len(sources))
+# cost=v*pis*cp.sum(prix_quot)
 
-for s in range(len(ssps)):
-    for source in range(len(sources)):
-        constr+= [ gdpFR[s][source]*(moy_intens[s,source]@q)-v <= cible_EC ]
+# for s in range(len(ssps)):
+#     for source in range(len(sources)):
+#         constr+= [ gdpFR[s][source]*(moy_intens[s,source]@q)-v <= cible_EC ]
 
-constr+=[q <= 1, cp.sum(q) == 1, q <= qmax]
-objective = cp.Minimize(cost)
-prob = cp.Problem(objective,constr)
-result = prob.solve()
-print("Solution CVXPY")
-print(q.value)
-print("Respect contrainte somme : %s"%(np.isclose(np.sum(q.value),1., rtol=1e-5, atol=1e-5)))
-print("Respect positivité : %s"%(q.value>=0.).all())
-print("Respect capacité : %s"%(qmax-q.value >= -1e-6).all())
-print("Valeur objectif : %s"%objective.value)
+# constr+=[q <= 1, cp.sum(q) == 1, q <= qmax]
+# objective = cp.Minimize(cost)
+# prob = cp.Problem(objective,constr)
+# result = prob.solve()
+# print("Solution CVXPY")
+# print(q.value)
+# print("Respect contrainte somme : %s"%(np.isclose(np.sum(q.value),1., rtol=1e-5, atol=1e-5)))
+# print("Respect positivité : %s"%(q.value>=0.).all())
+# print("Respect capacité : %s"%(qmax-q.value >= -1e-6).all())
+# print("Valeur objectif : %s"%objective.value)
 
 # print("Cas où SSP5 est connu")
 # x = cp.Variable(nbreg,nonneg=True)
@@ -205,13 +205,14 @@ print("Valeur objectif : %s"%objective.value)
 q = cp.Variable(nbreg,nonneg=True)
 constr = []
 
+prix_quot = [1,2,5,3,4]
 pis = cp.Parameter()
 pis.value = 1/(len(ssps)*len(sources))
 
 crit = 0
 for s in range(len(ssps)):
     for source in range(len(sources)):
-        crit += pis.value*cp.pos(gdpFR[s][source]*moy_intens[s,source]@q-cible_EC)
+        crit += pis.value*prix_quot[s]*cp.pos(gdpFR[s][source]*moy_intens[s,source]@q-cible_EC)
 
 constr+=[ q <= 1, cp.sum(q) == 1, q <= qmax]
 objective = cp.Minimize(crit)
@@ -233,6 +234,7 @@ q_opti_scenar = q.value
 # Avec une distribution normale des intensites pour chaque region
 q = cp.Variable(nbreg,nonneg=True)
 constr = []
+prix_quot = [1,2,5,3,4]
 
 M = 10000
 crit = 0
@@ -241,7 +243,7 @@ for i in range(M):
     source_gdp = np.random.randint(0,len(sources))
     intens = np.array([np.random.normal(distrib_intes[r,s,0],distrib_intes[r,s,1]) for r in range(nbreg)])
     gdp_FR = gdpFR[s][source_gdp]/M
-    crit += cp.pos(gdp_FR*intens@q-cible_EC/M)
+    crit += cp.pos(gdp_FR*intens@q-cible_EC/M) * prix_quot[s]
 
 constr+=[q<=1, cp.sum(q) == 1, q <= qmax]
 objective = cp.Minimize(crit)
@@ -347,44 +349,87 @@ for i in range(Nbiter):
         val_actuelle[i]=criteredis(qactuel,intens,gdp_FRcurr)
         val_opti_deterministe[i]=criteredis(q_deterministe,intens,gdp_FRcurr)
 
+def freq0(x):
+    res=0
+    for i in range(len(x)):
+        if x[i]==0.:
+            res+=1
+    return res/len(x)
 
-fig,ax = plt.subplots(figsize=(18,12))
-ax.hist(val_stratmoy,bins=300,color="green",alpha=0.75,label="strat moy")
-ax.hist(val_deuxpays,bins=300,color="blue",alpha=0.25,label="Allemagne-USA")
-ax.hist(val_actuelle,bins=300,color="orange",alpha=0.5,label="Actuelle")
-ax.hist(val_opti,bins=300,color="black",label="Opti gaussiennes")
-plt.xlabel("Critère",size=20)
-plt.ylabel("Fréquence",size=20)
-plt.legend(prop={'size': 20})
+print("Frequences obtention de 0 : ")
+print("Opti gaussien : %s"%(freq0(val_opti)))
+print("Opti discret : %s"%(freq0(val_opti_scenar)))
+print("Strat moy : %s"%(freq0(val_stratmoy)))
+print("2 pays : %s"%(freq0(val_deuxpays)))
+print("actuelle : %s"%(freq0(val_actuelle)))
+print("deterministe : %s"%(freq0(val_opti_deterministe)))
+rgb_cols = np.array([[0,0,0,1],[0,1,0,0.75],[0,0,1,0.45],[1,1,0,0.5],[1,0,0,0.45]])
+plt.figure()
+plt.bar(np.arange(1,10,2),height=[freq0(val_opti),freq0(val_stratmoy),freq0(val_deuxpays),freq0(val_actuelle),freq0(val_opti_deterministe)],color=rgb_cols)
+plt.ylabel("Frequencies of the event 'No quota bought'")
+plt.xticks(np.arange(1,10,2), 
+['stoch. optimum', 'mean strategy', 'Germany-USA only', 'current', 'deter. optimum'],
+rotation=45)
+plt.tight_layout()
+plt.show()
+
+plt.figure()
+plt.bar(np.arange(1,10,2),height=[freq0(val_opti_scenar),freq0(val_stratmoy),freq0(val_deuxpays),freq0(val_actuelle),freq0(val_opti_deterministe)],color=rgb_cols)
+plt.ylabel("Frequencies of the event 'No quota bought'")
+plt.xticks(np.arange(1,10,2), 
+['stoch. optimum', 'mean strategy', 'Germany-USA only', 'current', 'deter. optimum'],
+rotation=45)
+plt.tight_layout()
+plt.show()
+
+exit()
+def trans(x):
+    #return np.log(x+1)
+    #return x
+    res=[]
+    for i in range(len(x)):
+        if x[i]!=0.:
+            res.append(np.log(x[i]))
+    return res
+
+fig,ax = plt.subplots()
+ax.hist(trans(val_stratmoy),bins=300,color="green",alpha=0.75,label="mean strategy")
+ax.hist(trans(val_deuxpays),bins=300,color="blue",alpha=0.25,label="Germany-USA only")
+ax.hist(trans(val_actuelle),bins=300,color="orange",alpha=0.5,label="Current situation")
+ax.hist(trans(val_opti),bins=300,color="black",label="stoch. optimum (gaussian)")
+plt.xlabel("Log of Volume of quota bought (€)",size=15)
+plt.ylabel("Frequency",size=15)
+plt.legend(prop={'size': 15})
 plt.grid()
 plt.show()
 
-fig,ax = plt.subplots(figsize=(18,12))
-ax.hist(val_stratmoy,bins=300,color="green",alpha=0.75,label="strat moy")
-ax.hist(val_deuxpays,bins=300,color="blue",alpha=0.25,label="Allemagne-USA")
-ax.hist(val_actuelle,bins=300,color="orange",alpha=0.5,label="Actuelle")
-ax.hist(val_opti_scenar,bins=300,color="black",label="Opti par scenario")
-plt.xlabel("Critère",size=20)
-plt.ylabel("Fréquence",size=20)
-plt.legend(prop={'size': 20})
+
+fig,ax = plt.subplots()
+ax.hist(trans(val_stratmoy),bins=300,color="green",alpha=0.75,label="mean strategy")
+ax.hist(trans(val_deuxpays),bins=300,color="blue",alpha=0.25,label="Germany-USA only")
+ax.hist(trans(val_actuelle),bins=300,color="orange",alpha=0.5,label="Current situation")
+ax.hist(trans(val_opti_scenar),bins=300,color="black",label="stoch. optimum (discrete)")
+plt.xlabel("Log of Volume of quota bought (€)",size=15)
+plt.ylabel("Frequency",size=15)
+plt.legend(prop={'size': 15})
 plt.grid()
 plt.show()
 
-fig,ax = plt.subplots(figsize=(18,12))
-ax.hist(val_opti_deterministe,bins=300,color="red",alpha=0.45,label="Opti déterministe")
-ax.hist(val_opti_scenar,bins=300,color="green",alpha=0.45,label="Opti par scenario")
-plt.xlabel("Critère",size=20)
-plt.ylabel("Fréquence",size=20)
-plt.legend(prop={'size': 20})
+fig,ax = plt.subplots()
+ax.hist(trans(val_opti_deterministe),bins=300,color="red",alpha=0.45,label="deterministic optimum")
+ax.hist(trans(val_opti_scenar),bins=300,color="green",alpha=0.45,label="stoch. optimum (discrete)")
+plt.xlabel("Log of Volume of quota bought (€)",size=15)
+plt.ylabel("Frequency",size=15)
+plt.legend(prop={'size': 15})
 plt.grid()
 plt.show()
 
-fig,ax = plt.subplots(figsize=(18,12))
-ax.hist(val_opti_deterministe,bins=300,color="red",alpha=0.45,label="Opti déterministe")
-ax.hist(val_opti,bins=300,color="blue",alpha=0.45,label="Opti gaussiennes")
-plt.xlabel("Critère",size=20)
-plt.ylabel("Fréquence",size=20)
-plt.legend(prop={'size': 20})
+fig,ax = plt.subplots()
+ax.hist(trans(val_opti_deterministe),bins=300,color="red",alpha=0.45,label="deterministic optimum")
+ax.hist(trans(val_opti),bins=300,color="blue",alpha=0.45,label="stoch. optimum (gaussian)")
+plt.xlabel("Log of Volume of quota bought (€)",size=15)
+plt.ylabel("Frequency",size=15)
+plt.legend(prop={'size': 15})
 plt.grid()
 plt.show()
 
