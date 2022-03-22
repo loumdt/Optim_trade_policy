@@ -187,7 +187,8 @@ if create_little_json:
 reg_list = np.array(data_countries.loc[:,'Countries'])
 nbreg = len(reg_list)
 
-cible_EC = 249000 ## A modifier
+cible_EC = 249000 #diminution de 40% par rapport à 1990 (SNBC 1)
+#cible_EC = 332000 #diminution de 20% par rapport à 1990
 
 f = open('data_opti/GDP_France.json')
 gdp_france = json.load(f)
@@ -278,8 +279,8 @@ def opti_scenar(num_reg,moyennes_intens):
     print("Respect positivité : %s"%(q.value>=0.).all())
     print("Valeur objectif : %s"%objective.value)
     return q.value
-q_opti_scenar = opti_scenar(3,moy_intens_blocs)
-#q_opti_scenar = opti_scenar(nbreg,moy_intens)
+q_opti_scenar_blocs = opti_scenar(3,moy_intens_blocs)
+q_opti_scenar = opti_scenar(nbreg,moy_intens)
 
 ###################################################################################################
 # Méthode 3 : SSP pour GDP et distrib normale pour emi associée au SSP tiré
@@ -315,8 +316,8 @@ def opti_gauss(num_reg,distrib):
     print("Respect positivité : %s"%(q.value>=0.).all())
     print("Valeur objectif : %s"%objective.value)
     return q.value
-#q_opti = opti_gauss(nbreg,distrib_intes)
-q_opti = opti_gauss(3,distrib_intes_blocs)
+q_opti = opti_gauss(nbreg,distrib_intes)
+q_opti_blocs = opti_gauss(3,distrib_intes_blocs)
 ###################################################################################################
 # Optimisation dans le cas d'un futur connu - SSP connu et intensite = moyenne de la distrib gaussienne
 ###################################################################################################
@@ -343,8 +344,8 @@ def solution_pb_deterministe(num_reg,moyennes,s=0,source_gdp=2,verbose=False):
         print("Respect positivité : %s"%(q.value>=0.).all())
         print("Valeur objectif : %s"%objective.value)
     return q.value
-q_deterministe = solution_pb_deterministe(3,moy_intens_blocs)
-#q_deterministe = solution_pb_deterministe(nbreg,moy_intens)
+q_deterministe_blocs = solution_pb_deterministe(3,moy_intens_blocs)
+q_deterministe = solution_pb_deterministe(nbreg,moy_intens)
 
 ################ 3D plots #####################################################################
 #%%
@@ -365,12 +366,14 @@ if parbloc:
             zs.append(toutes_sol_determ[s,source,2])
     fig = plt.figure(figsize=(12,12))
     ax = fig.add_subplot(projection='3d')
-    ax.scatter(xs, ys, zs, marker='o',color='black',label='det. opt.',alpha=1, depthshade=False,s=70)
-    ax.scatter([q_opti_scenar[0]],[q_opti_scenar[1]],[q_opti_scenar[2]],marker='x',color='green',label='stoch. opt.',alpha=1, depthshade=False,s=70)
-    ax.scatter([qactuel_blocs[0]],[qactuel_blocs[1]],[qactuel_blocs[2]],marker='o',color='blue',label='current',alpha=1, depthshade=False,s=70)
-    ax.set_xlabel('European share',size=19)
-    ax.set_ylabel('American share',size=19)
-    ax.set_zlabel('Asian share',size=19)
+    ax.scatter(xs, ys, zs, marker='x',color='black',label='det. opt.',alpha=1, depthshade=False,s=200)
+    ax.scatter([q_opti_scenar_blocs[0]],[q_opti_scenar_blocs[1]],[q_opti_scenar_blocs[2]],marker='o',color='green',label='stoch. opt.',alpha=1, depthshade=False,s=300)
+    #qactuel_blocs2=qactuel_blocs/qactuel_blocs.sum()
+    ax.scatter([qactuel_blocs[0]],[qactuel_blocs[1]],[qactuel_blocs[2]],marker='D',color='blue',label='current',alpha=1, depthshade=False,s=200)
+    #ax.set_xlabel('\n' + 'xlabel', linespacing=4)
+    ax.set_xlabel('European share', linespacing=6,size=19)
+    ax.set_ylabel('American share', linespacing=6,size=19)
+    ax.set_zlabel('Asian share', linespacing=6,size=19)
     ax.legend(prop={'size': 17})
 
     def make_dashedLines(x,y,z,ax):
@@ -381,11 +384,11 @@ if parbloc:
             ax.plot([x_val,x_val],[y_val,y_val],zs=[0,z_val], linestyle="dashed",color="black")
 
     make_dashedLines(xs,ys,zs,ax)
-    make_dashedLines([q_opti_scenar[0]],[q_opti_scenar[1]],[q_opti_scenar[2]],ax)
+    make_dashedLines([q_opti_scenar_blocs[0]],[q_opti_scenar_blocs[1]],[q_opti_scenar_blocs[2]],ax)
     make_dashedLines([qactuel_blocs[0]],[qactuel_blocs[1]],[qactuel_blocs[2]],ax)
 
 
-    ax.view_init(25, 60)
+    ax.view_init(25, 62)
     plt.tight_layout()
     plt.savefig("3dscatterplot.png")
     plt.show()
@@ -443,7 +446,7 @@ if num_reg==3:
     qactuel=qactuel_blocs
 
 
-moyennes=True
+moyennes=False
 for i in range(Nbiter):
     if moyennes:    
         s = np.random.randint(0,len(ssps))
@@ -568,68 +571,60 @@ histos()
 import matplotlib as mpl
 mpl.rcParams['font.size'] = 18.0
 
-val_opti_deterministe_ssp1 = np.zeros(Nbiter)
-val_opti_deterministe_ssp2 = np.zeros(Nbiter)
-val_opti_deterministe_ssp3 = np.zeros(Nbiter)
-val_opti_deterministe_ssp4 = np.zeros(Nbiter)
-val_opti_deterministe_ssp5 = np.zeros(Nbiter)
-
-def solution_pb_deterministe_all_sources(num_reg,moyennes,s=0,verbose=False):
-    q = cp.Variable(num_reg,nonneg=True)
-    constr = []
-    intens = moyennes[:,1:,:].mean(axis=1)[s] #emissions connues
-    gdpFR_noCEPII=np.array(gdpFR)[:,1:]
-    gdp_FR = np.mean(gdpFR_noCEPII,axis=1)[s] #pib connu
-    #croiss=(dict_worldgdp['2030']['SSP%s'%(s+1)][sources[source]]-dict_worldgdp['2015'])/dict_worldgdp['2015']
-    #prix_quot=(1+(croiss)) * 54
-    prix_quot=250
-    crit = prix_quot*cp.pos(0.3*gdp_FR*intens@q-cible_EC)
-    if num_reg==3:
-        constr+=[ q <= 1, cp.sum(q) == 1,q <= qmax_blocs]
-    else:
-        constr+=[ q <= 1, cp.sum(q) == 1,q <= qmax]
-    objective = cp.Minimize(crit)
-    prob = cp.Problem(objective,constr)
-    prob.solve(max_iters=10000)
-    if verbose:
-        print("Solution CVXPY - Cas déterministe - SSP %s - Moyenne sur les sources"%(ssps[s]))
-        print(q.value)
-        print("Respect contrainte somme : %s"%(np.isclose(np.sum(q.value),1., rtol=1e-5, atol=1e-5)))
-        print("Respect positivité : %s"%(q.value>=0.).all())
-        print("Valeur objectif : %s"%objective.value)
-    return q.value
-#q_deterministe = solution_pb_deterministe(3,moy_intens_blocs)
-q_deterministe_ssp1 = solution_pb_deterministe_all_sources(nbreg,moy_intens,s=0)
-q_deterministe_ssp2 = solution_pb_deterministe_all_sources(nbreg,moy_intens,s=1)
-q_deterministe_ssp3 = solution_pb_deterministe_all_sources(nbreg,moy_intens,s=2)
-q_deterministe_ssp4 = solution_pb_deterministe_all_sources(nbreg,moy_intens,s=3)
-q_deterministe_ssp5 = solution_pb_deterministe_all_sources(nbreg,moy_intens,s=4)
-
-for i in range(Nbiter):
-    val_opti_deterministe_ssp1[i]=criteremoy_allsources(0,q_deterministe_ssp1)
-    val_opti_deterministe_ssp2[i]=criteremoy_allsources(1,q_deterministe_ssp2)
-    val_opti_deterministe_ssp3[i]=criteremoy_allsources(2,q_deterministe_ssp3)
-    val_opti_deterministe_ssp4[i]=criteremoy_allsources(3,q_deterministe_ssp4)  
-    val_opti_deterministe_ssp5[i]=criteremoy_allsources(4,q_deterministe_ssp5)
-
-
-#%%
 def autopct_more_than_1(pct) :
     return ('%1.1f%%' % pct) if pct >= 1.45 else ''
 
+for s in range(5):
+    for source in range(len(sources)):
+        print("Solution pour %s - %s"%(ssps[s],sources[source]))
+        q = solution_pb_deterministe(nbreg,moy_intens,s,source)
+        sizes = pd.DataFrame(100*q,index=reg_list)
+        explode = np.zeros_like(q)  # only "explode" the 2nd slice (i.e. 'Hogs')
+        fig1, ax1 = plt.subplots(facecolor='white',figsize=(12,12))
+        p,t,a = ax1.pie(np.reshape(sizes.values,(-1,)), explode=explode, labels=sizes.index, autopct=autopct_more_than_1,
+                shadow=False, startangle=90,rotatelabels=180,labeldistance=None, pctdistance=0.8)
+        ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+
+        # create handles and labels for legend, take only those where value is > 1
+        h,l = zip(*[(h,lab) for h,lab,i in zip(p,sizes.index.values,sizes.values) if i >= 1])
+
+        ax1.legend(h, l,loc="best", bbox_to_anchor=(1,1))
+
+
+        plt.tight_layout()
+        plt.savefig("piechart_deterministic_ssp"+str(s+1)+"_"+sources[source]+".png")
+        plt.show()
+        #plt.close()
+
+        fig2, ax2 = plt.subplots(facecolor='white',figsize=(12,12))  
+        x_pos = np.arange(45)/2
+        bars = np.reshape(sizes.index.values,(-1,))
+        height = np.reshape(sizes.values,(-1,))
+        # Make the plot
+        clrs=[]
+        for i in range(len(q)) :
+            if np.isclose(1.4*qactuel[i],q[i],atol=1e-5):
+                clrs.append('red')
+            else :
+                clrs.append('blue')
+        ax2.barh(x_pos, height, color=clrs,height=0.5)
+
+        # Create names on the x-axis
+        plt.yticks(x_pos, bars)
+        plt.tight_layout()
+        plt.savefig("barh_deterministic_ssp"+str(s+1)+"_"+sources[source]+".png")
+        
+        # Show graphic
+        plt.show()
+
+#%%
 dict_fignames={'qactuel' : 'current_policy', 'q_opti' : "optimal", 
-    'q_opti_scenar' : "optimal_scenarios", 'q_deterministe_ssp1' : "deterministic_ssp1",
-    'q_deterministe_ssp2' : "deterministic_ssp2",'q_deterministe_ssp3' : "deterministic_ssp3",
-    'q_deterministe_ssp4' : "deterministic_ssp4",'q_deterministe_ssp5' : "deterministic_ssp5"}
+    'q_opti_scenar' : "optimal_scenarios"}
 
-qdictionary = {'qactuel':qactuel, 'q_opti':q_opti, 'q_deterministe_ssp1':q_deterministe_ssp1,
-    'q_deterministe_ssp2':q_deterministe_ssp2, 'q_deterministe_ssp3':q_deterministe_ssp3,
-    'q_deterministe_ssp4':q_deterministe_ssp4, 'q_deterministe_ssp5':q_deterministe_ssp5,
-    'q_opti_scenar':q_opti_scenar}
+qdictionary = {'qactuel':qactuel, 'q_opti':q_opti,'q_opti_scenar':q_opti_scenar}
 
-for my_q in ['qactuel', 'q_opti', 'q_opti_scenar','q_deterministe_ssp1','q_deterministe_ssp2'
-,'q_deterministe_ssp3','q_deterministe_ssp4','q_deterministe_ssp5'] :
-    print(my_q)
+for my_q in ['qactuel', 'q_opti', 'q_opti_scenar'] :
+    print("Solution pour "+my_q)
     q = qdictionary[my_q]
     # Pie chart, where the slices will be ordered and plotted counter-clockwise:
     sizes = pd.DataFrame(100*q,index=reg_list)
@@ -656,7 +651,13 @@ for my_q in ['qactuel', 'q_opti', 'q_opti_scenar','q_deterministe_ssp1','q_deter
     bars = np.reshape(sizes.index.values,(-1,))
     height = np.reshape(sizes.values,(-1,))
     # Make the plot
-    ax2.barh(x_pos, height, height=0.5)
+    clrs=[]
+    for i in range(len(q)) :
+        if np.isclose(1.4*qactuel[i],q[i],atol=1e-5):
+            clrs.append('red')
+        else :
+            clrs.append('blue')
+    ax2.barh(x_pos, height, color=clrs,height=0.5)
 
     # Create names on the x-axis
     plt.yticks(x_pos, bars)
