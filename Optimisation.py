@@ -11,15 +11,20 @@ import json
 import cvxpy as cp
 import pandas as pd
 
+#%%
+#data_countries=pd.read_excel("List_Countries.xlsx")
+data_countries=pd.read_excel("HISTO_PAYS_IMPORT.xls")
+data_countries = data_countries[['Countries','Volume','Share','Europe','America_Africa','Asia']]
+data_countries = data_countries.iloc[:36,:]
 
-data_countries=pd.read_excel("List_Countries.xlsx")
-trois_blocs = ['Europe', 'Northern Am.', 'Asia']
+data_countries.loc[:,'Share']=data_countries.loc[:,'Share']/(data_countries.loc[:,'Share']/100).sum()
+
+trois_blocs = ['Europe', 'America and Africa', 'Asia']
 liste_europe = np.array(data_countries.loc[:,'Europe'])
-liste_am = np.array(data_countries.loc[:,'America'])
+liste_am = np.array(data_countries.loc[:,'America_Africa'])
 liste_asia = np.array(data_countries.loc[:,'Asia'])
 
-
-create_little_json =False
+create_little_json = False
 if create_little_json:
     f = open('List_Emi.json')
     list_emi = json.load(f)
@@ -33,7 +38,7 @@ if create_little_json:
     GDP_data = json.load(f)
     f.close()
 
-
+#%%
 sources = ['CEPII','OECD','IIASA','PIK']
 ssps = ['SSP1','SSP2','SSP3','SSP4','SSP5']
 reg_list=[]
@@ -203,6 +208,7 @@ gdpFR = [[gdp_france["SSP{}".format(s+1)][source] for source in sources] for s i
 moy_intens = np.zeros((len(ssps),len(sources),nbreg))
 distrib_intes = np.zeros((nbreg,len(ssps),2))
 
+
 for s in range(len(ssps)):
     for r in range(nbreg):
         for source in range(len(sources)):
@@ -231,7 +237,7 @@ for bloc in range(3):
 
 
 # Pour la contrainte de capcacite d exportation
-qactuel = np.array(data_countries.loc[:,'Share']/100)
+qactuel = np.array(data_countries.loc[:,'Share']/100)#/qactuel.sum()
 
 
 qactuel_blocs = np.zeros(3)
@@ -367,13 +373,12 @@ if parbloc:
     fig = plt.figure(figsize=(12,12))
     ax = fig.add_subplot(projection='3d')
     ax.scatter(xs, ys, zs, marker='x',color='black',label='det. opt.',alpha=1, depthshade=False,s=200)
-    ax.scatter([q_opti_scenar_blocs[0]],[q_opti_scenar_blocs[1]],[q_opti_scenar_blocs[2]],marker='o',color='green',label='stoch. opt.',alpha=1, depthshade=False,s=300)
-    #qactuel_blocs2=qactuel_blocs/qactuel_blocs.sum()
+    ax.scatter([q_opti_scenar_blocs[0]],[q_opti_scenar_blocs[1]],[q_opti_scenar_blocs[2]],marker='o',color='red',label='stoch. opt.',alpha=1, depthshade=False,s=300)
     ax.scatter([qactuel_blocs[0]],[qactuel_blocs[1]],[qactuel_blocs[2]],marker='D',color='blue',label='current',alpha=1, depthshade=False,s=200)
     #ax.set_xlabel('\n' + 'xlabel', linespacing=4)
-    ax.set_xlabel('European share', linespacing=6,size=19)
-    ax.set_ylabel('American share', linespacing=6,size=19)
-    ax.set_zlabel('Asian share', linespacing=6,size=19)
+    ax.set_xlabel('\n European share', linespacing=2,size=19)
+    ax.set_ylabel('\n American share', linespacing=2,size=19)
+    ax.set_zlabel('\n Asian share', linespacing=2,size=19)
     ax.legend(prop={'size': 17})
 
     def make_dashedLines(x,y,z,ax):
@@ -386,8 +391,12 @@ if parbloc:
     make_dashedLines(xs,ys,zs,ax)
     make_dashedLines([q_opti_scenar_blocs[0]],[q_opti_scenar_blocs[1]],[q_opti_scenar_blocs[2]],ax)
     make_dashedLines([qactuel_blocs[0]],[qactuel_blocs[1]],[qactuel_blocs[2]],ax)
-
-
+    zticks=np.arange(0, 0.35, 0.05)
+    plt.xticks(size=17)
+    plt.yticks(size=17)
+    ax.set_zticks(zticks)
+    # change fontsize
+    for t in ax.zaxis.get_major_ticks(): t.label.set_fontsize(17)
     ax.view_init(25, 62)
     plt.tight_layout()
     plt.savefig("3dscatterplot.png")
@@ -568,18 +577,18 @@ histos()
 # Diagrammes circulaires
 ########################################################################################################
 #%%
-import matplotlib as mpl
-mpl.rcParams['font.size'] = 18.0
+from matplotlib import rcParams
+rcParams['font.size'] = 18.0
 
 def autopct_more_than_1(pct) :
     return ('%1.1f%%' % pct) if pct >= 1.45 else ''
-
+#%%
 for s in range(5):
     for source in range(len(sources)):
         print("Solution pour %s - %s"%(ssps[s],sources[source]))
         q = solution_pb_deterministe(nbreg,moy_intens,s,source)
         sizes = pd.DataFrame(100*q,index=reg_list)
-        explode = np.zeros_like(q)  # only "explode" the 2nd slice (i.e. 'Hogs')
+        explode = np.zeros_like(q)  # only "explode" the i-th slice
         fig1, ax1 = plt.subplots(facecolor='white',figsize=(12,12))
         p,t,a = ax1.pie(np.reshape(sizes.values,(-1,)), explode=explode, labels=sizes.index, autopct=autopct_more_than_1,
                 shadow=False, startangle=90,rotatelabels=180,labeldistance=None, pctdistance=0.8)
@@ -622,7 +631,7 @@ dict_fignames={'qactuel' : 'current_policy', 'q_opti' : "optimal",
     'q_opti_scenar' : "optimal_scenarios"}
 
 qdictionary = {'qactuel':qactuel, 'q_opti':q_opti,'q_opti_scenar':q_opti_scenar}
-
+#%%
 for my_q in ['qactuel', 'q_opti', 'q_opti_scenar'] :
     print("Solution pour "+my_q)
     q = qdictionary[my_q]
@@ -659,6 +668,7 @@ for my_q in ['qactuel', 'q_opti', 'q_opti_scenar'] :
             clrs.append('blue')
     ax2.barh(x_pos, height, color=clrs,height=0.5)
 
+
     # Create names on the x-axis
     plt.yticks(x_pos, bars)
     plt.tight_layout()
@@ -666,8 +676,96 @@ for my_q in ['qactuel', 'q_opti', 'q_opti_scenar'] :
     
     # Show graphic
     plt.show()
+#%%
+fig1, ax1 = plt.subplots(nrows=3, ncols=2,facecolor='white',figsize=(12,20))
+idx=1
+for (s,source) in [(0,2),(4,0),(1,1),(2,3)] :
+    q = solution_pb_deterministe(nbreg,moy_intens,s,source)
+    sizes = pd.DataFrame(100*q,index=reg_list)
+    plt.subplot(3,2,idx)
+    idx+=1
+    explode = np.zeros_like(q)  # only "explode" the 2nd slice (i.e. 'Hogs')
+    
+    p,t,a = plt.pie(np.reshape(sizes.values,(-1,)), explode=explode, labels=sizes.index, autopct=autopct_more_than_1,
+            shadow=False, startangle=90,rotatelabels=180,labeldistance=None, pctdistance=0.8)
+    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
 
+    # create handles and labels for legend, take only those where value is > 1
+    h,l = zip(*[(h,lab) for h,lab,i in zip(p,sizes.index.values,sizes.values) if i >= 1])
 
+    #ax1.legend(h, l,loc="best", bbox_to_anchor=(1,1))
+
+    plt.tight_layout()
+
+for q in [qdictionary['qactuel'],qdictionary["q_opti_scenar"]]:    
+    q = solution_pb_deterministe(nbreg,moy_intens,s,source)
+    sizes = pd.DataFrame(100*q,index=reg_list)
+    plt.subplot(3,2,idx)
+    idx+=1
+    explode = np.zeros_like(q)  # only "explode" the 2nd slice (i.e. 'Hogs')
+    
+    p,t,a = plt.pie(np.reshape(sizes.values,(-1,)), explode=explode, labels=sizes.index, autopct=autopct_more_than_1,
+            shadow=False, startangle=90,rotatelabels=180,labeldistance=None, pctdistance=0.8)
+    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+
+    # create handles and labels for legend, take only those where value is > 1
+    h,l = zip(*[(h,lab) for h,lab,i in zip(p,sizes.index.values,sizes.values) if i >= 1])
+
+    #ax1.legend(h, l,loc="best", bbox_to_anchor=(1,1))
+plt.savefig("piechart_6_figs.png")
+    #plt.show()
+    #plt.close()
+#%%
+fig2, ax2 = plt.subplots(nrows=3, ncols=2,facecolor='white',figsize=(14,20))  
+idx=1
+for (s,source) in [(0,2),(4,0),(1,1),(2,3)] :
+    q = solution_pb_deterministe(nbreg,moy_intens,s,source)
+    sizes = pd.DataFrame(100*q,index=reg_list)
+    plt.subplot(3,2,idx)
+    idx+=1
+    x_pos = np.arange(36)/2
+    bars = np.reshape(sizes.index.values,(-1,))
+    height = np.reshape(sizes.values,(-1,))
+    # Make the plot
+    #clrs=[]
+    #for i in range(len(q)) :
+    #    if np.isclose(1.4*qactuel[i],q[i],atol=1e-5):
+    #        clrs.append('red')
+    #    else :
+    #        clrs.append('blue')
+    clrs=['black']*nbreg
+    plt.barh(x_pos, height, color=clrs,height=0.5)
+
+    # Create names on the x-axis
+    plt.yticks(x_pos, bars,size=12)
+    plt.xlim((0,32))
+    plt.tight_layout()
+
+for q in [qdictionary['qactuel'],qdictionary["q_opti_scenar"]]:
+    sizes = pd.DataFrame(100*q,index=reg_list)
+    plt.subplot(3,2,idx)
+    idx+=1
+    x_pos = np.arange(36)/2
+    bars = np.reshape(sizes.index.values,(-1,))
+    height = np.reshape(sizes.values,(-1,))
+    # Make the plot
+    #clrs=[]
+    #for i in range(len(q)) :
+    #    if np.isclose(1.4*qactuel[i],q[i],atol=1e-5):
+    #        clrs.append('red')
+    #    else :
+    #        clrs.append('blue')
+    if (q == qdictionary["q_opti_scenar"]).all():
+        clrs=['red']*nbreg
+    else :
+        clrs=['blue']*nbreg
+    plt.barh(x_pos, height, color=clrs,height=0.5)
+
+    # Create names on the x-axis
+    plt.yticks(x_pos, bars,size=12)
+    plt.xlim((0,32))    
+plt.savefig("barh_6_figs.png")
+        
 
 #%%
 ########################################################################################################
