@@ -99,7 +99,7 @@ if create_little_json:
             f = open("data_opti/Emi_"+r+".json","w")
             f.write(json1)
             f.close()
-            print(r)
+            #print(r)
 if create_little_json:
     gdpUE=0
     emiUE=0
@@ -339,7 +339,7 @@ def solution_pb_deterministe(num_reg,moyennes,s=0,source_gdp=2,verbose=False):
 q_deterministe_blocs = solution_pb_deterministe(3,moy_intens_blocs)
 q_deterministe = solution_pb_deterministe(nbreg,moy_intens)
 
-################ 3D plots #####################################################################
+################ 3D plot #####################################################################
 #%%
 parbloc=True
 if parbloc:
@@ -507,6 +507,7 @@ def histos():
     plt.ylabel("Frequency",size=15)
     plt.legend(prop={'size': 15})
     plt.grid()
+    plt.show()
     
     fig,ax = plt.subplots(figsize=(14,10))
     ax.hist(trans(val_stratmoy),bins=300,color="orange",alpha=0.75,label="Mean strategy")
@@ -520,7 +521,8 @@ def histos():
     plt.yticks(size=20)
     plt.grid()
     plt.savefig('histo_1.png')
-
+    plt.show()
+    
     fig,ax = plt.subplots()
     ax.hist(trans(val_opti_deterministe),bins=300,color="black",alpha=0.7,label="deterministic optimum")
     ax.hist(trans(val_opti_scenar),bins=300,color="red",alpha=0.7,label="stoch. optimum")
@@ -528,6 +530,7 @@ def histos():
     plt.ylabel("Frequency",size=15)
     plt.legend(prop={'size': 15})
     plt.grid()
+    plt.show()
 
     fig,ax = plt.subplots()
     ax.hist(trans(val_opti_deterministe),bins=300,color="black",alpha=0.7,label="deterministic optimum")
@@ -584,7 +587,56 @@ for q in [qdictionary['qactuel'],qdictionary["q_opti_scenar"]]:
     plt.yticks(x_pos, bars,size=16)
     plt.xlim((0,32))    
 plt.savefig("barh_4_figs.png")
-        
+plt.show()
+
+#%%
+########################################################################################################
+# Plot projections of GHG emissions (2030) of the 10 biggest (in 2015) sourcing regions, except CHine
+########################################################################################################
+rcParams['font.size'] = 15
+def distrib_pays():
+    liste_pays=["Belgium","Germany","Italy","Japan","Netherlands","Poland","Spain","Switzerland","United Kingdom","United States"]
+    liste_pays=["Germany","Italy","Belgium","United States","Spain","Netherlands","United Kingdom","Switzerland","Poland","Japan"]
+    fig,ax = plt.subplots(10,1,figsize=(10,16),sharex=True)
+    for k,r in enumerate(liste_pays):
+        list_gdp = [[GDP_data[source][s][r]["2030"] for source in sources] for s in ssps]
+        gdp_moys = np.mean(list_gdp,axis=1)
+        emis = np.zeros((4,10000))
+        for j,source in enumerate(sources):
+            for s in range(5):
+                emis[j,:]+= 0.2 * np.array(list_emi[source]["SSP%s"%(s+1)][r]['GHGtot']["2030"])/gdp_moys[s]
+            if k==7 or k==9:
+                ax[k].bar(np.mean(emis[j,:]),height=10,width=4,alpha=0.3,label=source)
+            else:
+                ax[k].hist(emis[j,:],bins=1000,alpha=0.3,label=source)
+        #print(r)
+        #print(np.mean(list_emi[source]["SSP%s"%(s+1)][r]['GHGtot']["2030"]))
+        #print(gdp_moys[s])
+        #print(np.mean(emis[j,:]))
+        ax[k].set_ylabel(r,rotation=30,va='center',ha='right')
+        ax[k].set_xlim(50,900)
+        ax[k].set_zorder(2)
+        if k==0:
+            ax[k].legend(bbox_to_anchor=(1.15, 1.),prop={'size': 16})
+            ax[k].set_zorder(3)
+    #fig.suptitle("Mean carbon intensity on all SSPs")
+    ax[k].set(xlabel="Carbon intensity (ktCO2eq/G€)")
+    plt.tight_layout()
+    plt.savefig('total.png')
+    plt.show()
+    return   
+if create_little_json :
+    distrib_pays()
+else :
+    f=open('GDP_data.json')
+    GDP_data = json.load(f)
+    f.close()
+    
+    f = open('List_Emi.json')
+    list_emi = json.load(f)
+    f.close()
+    
+    distrib_pays()
 
 #%%
 ########################################################################################################
