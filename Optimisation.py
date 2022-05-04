@@ -1,18 +1,14 @@
 """ Optimize french trade policy
 """
 #%%
-from calendar import c
 import numpy as np
-from numpy.core.einsumfunc import _greedy_path
 import matplotlib.pyplot as plt
-import scipy.optimize as sco
 from scipy.stats import norm
 import json
 import cvxpy as cp
 import pandas as pd
 
 #%%
-#data_countries=pd.read_excel("List_Countries.xlsx")
 data_countries=pd.read_excel("HISTO_PAYS_IMPORT.xls")
 data_countries = data_countries[['Countries','Volume','Share','Europe','America_Africa','Asia']]
 data_countries = data_countries.iloc[:36,:]
@@ -184,16 +180,14 @@ if create_little_json:
 
 
 #######################################################################################################
-# PARAMETRES
+# PARAMETERS
 #######################################################################################################
 #%%
-
-
 reg_list = np.array(data_countries.loc[:,'Countries'])
 nbreg = len(reg_list)
 
-cible_EC = 249000 #diminution de 40% par rapport à 1990 (SNBC 1)
-#cible_EC = 332000 #diminution de 20% par rapport à 1990
+cible_EC = 249000 # KtCO2, diminution of 40% with respect to 1990 (SNBC 1)
+#cible_EC = 332000 # KtCO2, diminution of 20% with respect to 1990
 
 f = open('data_opti/GDP_France.json')
 gdp_france = json.load(f)
@@ -236,9 +230,8 @@ for bloc in range(3):
             moy_intens_blocs[s,source,bloc] = my_dict[ssps[s]][sources[source]]
 
 
-# Pour la contrainte de capcacite d exportation
-qactuel = np.array(data_countries.loc[:,'Share']/100)#/qactuel.sum()
-
+# Pour la contrainte de capacite d exportation
+qactuel = np.array(data_countries.loc[:,'Share']/100)
 
 qactuel_blocs = np.zeros(3)
 for r in range(nbreg):
@@ -256,10 +249,10 @@ qmax_blocs = (1+ pct_exportmax)*np.array(qactuel_blocs)
 
 
 ###################################################################################################
-# Méthode 2 : Par scenarios et avec formulation initiale
+# Method 2 : Second formulation (explicitly convex), with scenarios
 ###################################################################################################
 #%% CVXPY 2nd formulation
-#construct the problem with the secon formulation :
+#construct the problem with the second formulation :
 def opti_scenar(num_reg,moyennes_intens):
     q = cp.Variable(num_reg,nonneg=True)
     constr = []
@@ -268,10 +261,8 @@ def opti_scenar(num_reg,moyennes_intens):
     crit = 0
     for s in range(len(ssps)):
         for source in range(len(sources)):
-            croiss=(dict_worldgdp['2030']['SSP%s'%(s+1)][sources[source]]-dict_worldgdp['2015'])/dict_worldgdp['2015']
-            prix_quot=(1+(croiss)) * 54
             prix_quot=250
-            crit += pis.value*prix_quot*cp.pos(0.3*gdpFR[s][source]*moyennes_intens[s,source]@q-cible_EC)
+            crit += pis.value*prix_quot*cp.pos(0.3*gdpFR[s][source]*moyennes_intens[s,source]@q-cible_EC) #cible EC est en KtCO2eq
     if num_reg==3:
         constr+=[ q <= 1, cp.sum(q) == 1,q <= 0.7*qmax_blocs]
     else:
@@ -289,7 +280,7 @@ q_opti_scenar_blocs = opti_scenar(3,moy_intens_blocs)
 q_opti_scenar = opti_scenar(nbreg,moy_intens)
 
 ###################################################################################################
-# Méthode 3 : SSP pour GDP et distrib normale pour emi associée au SSP tiré
+# Method 3 : SSP pour GDP et distrib normale pour emi associée au SSP tiré
 ###################################################################################################
 #%% Autre implementation de l'alea -> on a une distribution par SSP et le tirage d'un SSP 
 # pour avoir un effet de tendance mondiale
@@ -304,10 +295,7 @@ def opti_gauss(num_reg,distrib):
         source_gdp = np.random.randint(0,len(sources))
         intens = np.array([np.random.normal(distrib[r,s,0],distrib[r,s,1]) for r in range(num_reg)])
         gdp_FR = gdpFR[s][source_gdp]/M
-        croiss=(dict_worldgdp['2030']['SSP%s'%(s+1)][sources[source]]-dict_worldgdp['2015'])/dict_worldgdp['2015']
-        prix_quot=(1+(croiss)) * 54
         prix_quot=250
-         
         crit += cp.pos(0.3*gdp_FR*intens@q-cible_EC/M) * prix_quot
     if num_reg==3:
         constr+=[ q <= 1, cp.sum(q) == 1,q <= qmax_blocs]
@@ -325,15 +313,13 @@ def opti_gauss(num_reg,distrib):
 q_opti = opti_gauss(nbreg,distrib_intes)
 q_opti_blocs = opti_gauss(3,distrib_intes_blocs)
 ###################################################################################################
-# Optimisation dans le cas d'un futur connu - SSP connu et intensite = moyenne de la distrib gaussienne
+# Deterministic optimization : Anticipative future, everything is known : known SSP and carbon intensity = gaussian distribution mean
 ###################################################################################################
 def solution_pb_deterministe(num_reg,moyennes,s=0,source_gdp=2,verbose=False):
     q = cp.Variable(num_reg,nonneg=True)
     constr = []
-    intens = moyennes[s,source_gdp] #emissions connues
-    gdp_FR = gdpFR[s][source_gdp] #pib connu
-    croiss=(dict_worldgdp['2030']['SSP%s'%(s+1)][sources[source]]-dict_worldgdp['2015'])/dict_worldgdp['2015']
-    prix_quot=(1+(croiss)) * 54
+    intens = moyennes[s,source_gdp] #known emissions
+    gdp_FR = gdpFR[s][source_gdp] #known gdp
     prix_quot=250
     crit = prix_quot*cp.pos(0.3*gdp_FR*intens@q-cible_EC)
     if num_reg==3:
@@ -403,9 +389,9 @@ if parbloc:
     plt.show()
 
 ###################################################################################################
-# Histogramme des réponses
+# Response histograms
 ###################################################################################################
-#%% Histogrammes de reponse
+#%% Response histograms
 
 # Test de la politique optimale
 def criteremoy(ssp,source,my_q):
@@ -422,8 +408,6 @@ def criteremoy_allsources(ssp,my_q):
     return max(curr_gdpFR*(np.dot(moy_intens_moy[ssp],my_q))-cible_EC,0)
 
 def criteredis(my_q,intens,curr_gdpFR,curr_gdpW):
-    #croiss=(curr_gdpW-dict_worldgdp['2015'])/dict_worldgdp['2015']
-    #prix_quot=(1+(croiss)) * 54
     prix_quot=250   
     return prix_quot*max(curr_gdpFR*(np.dot(intens,my_q))-cible_EC,0)
 
@@ -433,22 +417,7 @@ val_opti = np.zeros(Nbiter)
 val_opti_scenar = np.zeros(Nbiter)
 val_opti_deterministe = np.zeros(Nbiter)
 val_stratmoy = np.zeros(Nbiter)
-#val_deuxpays = np.zeros(Nbiter)
 val_actuelle = np.zeros(Nbiter)
-# q2p = np.zeros(nbreg)
-# q2p[3]=0.7
-# if qmax[4]>= 0.5:
-#     q2p[4]=0.5
-# else:
-#     q2p[4]=qmax[4]
-# if qmax[-1]>= 0.5:
-#     q2p[-1]=0.5
-# else:
-#     q2p[-1]=qmax[-1]
-# remaining = 0.3 - np.sum([qactuel[i]*(reg_list[i]!='France')*(reg_list[i]!='Germany')*(reg_list[i]!='United States') for i in range(nbreg)])
-# for i in range(nbreg):
-#     if reg_list[i]!='France' and reg_list[i]!='Germany' and reg_list[i]!='United States':
-#         q2p[i] = remaining/15
 num_reg=nbreg
 qmoy = 1/(num_reg-1)*np.ones(num_reg)
 if num_reg==3:
@@ -463,7 +432,6 @@ for i in range(Nbiter):
         val_opti[i]=criteremoy(s,source,q_opti)
         val_opti_scenar[i]=criteremoy(s,source,q_opti_scenar)
         val_stratmoy[i]=criteremoy(s,source,qmoy)
-        #val_deuxpays[i]=criteremoy(s,source,q2p)
         val_actuelle[i]=criteremoy(s,source,qactuel)
         val_opti_deterministe[i]=criteremoy(s,source,q_deterministe)
     else:
@@ -477,7 +445,6 @@ for i in range(Nbiter):
         val_opti[i]=criteredis(q_opti,intens,gdp_FRcurr,curr_dgp_world)
         val_opti_scenar[i]=criteredis(q_opti_scenar,intens,gdp_FRcurr,curr_dgp_world)
         val_stratmoy[i]=criteredis(qmoy,intens,gdp_FRcurr,curr_dgp_world)
-        #val_deuxpays[i]=criteredis(q2p,intens,gdp_FRcurr,curr_dgp_world)
         val_actuelle[i]=criteredis(qactuel,intens,gdp_FRcurr,curr_dgp_world)
         val_opti_deterministe[i]=criteredis(q_deterministe,intens,gdp_FRcurr,curr_dgp_world)
 
@@ -519,52 +486,53 @@ plt.tight_layout()
 plt.show()
 
 #exit()
+#%%
 def trans(x):
     #return x
     res=[]
     for i in range(len(x)):
         if x[i]!=0.:
-            res.append(np.log(x[i]))
+            res.append(np.log10(x[i]))
+            #res.append(x[i])
     return res
-    
+#%%   
 def histos():
     fig,ax = plt.subplots()
-    ax.hist(trans(val_stratmoy),bins=300,color="green",alpha=0.75,label="mean strategy" )
-    #ax.hist(trans(val_deuxpays),bins=300,color="blue",alpha=0.25,label="Germany-USA only")
-    ax.hist(trans(val_actuelle),bins=300,color="orange",alpha=0.5,label="Current situation" )
-    ax.hist(trans(val_opti),bins=300,color="black",label="stoch. optimum (gaussian)" )
-    #plt.yscale('log')
-    plt.xlabel("Log of Volume of quota bought (€2018)",size=15)
+    ax.hist(trans(val_stratmoy),bins=300,color="orange",alpha=0.75,label="mean strategy" )
+    ax.hist(trans(val_opti_deterministe),bins=300,color="black",alpha=1,label="deterministic optimum")
+    ax.hist(trans(val_actuelle),bins=300,color="blue",alpha=0.5,label="Current situation" )
+    ax.hist(trans(val_opti),bins=300,color="red",alpha=0.5,label="stoch. optimum (gaussian)" )
+
+    plt.xlabel("Log10 of Volume of quota bought (k€2018)",size=15)
     plt.ylabel("Frequency",size=15)
     plt.legend(prop={'size': 15})
     plt.grid()
     
+    fig,ax = plt.subplots(figsize=(14,10))
+    ax.hist(trans(val_stratmoy),bins=300,color="orange",alpha=0.75,label="Mean strategy")
+    ax.hist(trans(val_opti_deterministe),bins=300,color="black",alpha=1,label="Det. opt. SSP1 - IIASA")
+    ax.hist(trans(val_actuelle),bins=300,color="blue",alpha=0.5,label="Current situation")
+    ax.hist(trans(val_opti_scenar),bins=300,color="red",alpha=0.5,label="Stochastic optimum")
+    plt.xlabel("Log10 of Volume of quota bought (k€2018)",size=25)
+    plt.ylabel("Frequency",size=25)
+    plt.legend(prop={'size': 25})
+    plt.xticks(size=20)
+    plt.yticks(size=20)
+    plt.grid()
+    plt.savefig('histo_1.png')
+
     fig,ax = plt.subplots()
-    ax.hist(trans(val_stratmoy),bins=300,color="green",alpha=0.75,label="mean strategy")
-    #ax.hist(trans(val_deuxpays),bins=300,color="blue",alpha=0.25,label="Germany-USA only")
-    ax.hist(trans(val_actuelle),bins=300,color="orange",alpha=0.5,label="Current situation")
-    ax.hist(trans(val_opti_scenar),bins=300,color="black",label="stoch. optimum")
-    #plt.yscale('log')
-    plt.xlabel("Log of Volume of quota bought (€2018)",size=15)
+    ax.hist(trans(val_opti_deterministe),bins=300,color="black",alpha=0.7,label="deterministic optimum")
+    ax.hist(trans(val_opti_scenar),bins=300,color="red",alpha=0.7,label="stoch. optimum")
+    plt.xlabel("Log10 of Volume of quota bought (k€2018)",size=15)
     plt.ylabel("Frequency",size=15)
     plt.legend(prop={'size': 15})
     plt.grid()
-    
 
     fig,ax = plt.subplots()
-    ax.hist(trans(val_opti_deterministe),bins=300,color="red",alpha=0.45,label="deterministic optimum")
-    ax.hist(trans(val_opti_scenar),bins=300,color="green",alpha=0.45,label="stoch. optimum")
-    #plt.yscale('log')
-    plt.xlabel("Log of Volume of quota bought (€2018)",size=15)
-    plt.ylabel("Frequency",size=15)
-    plt.legend(prop={'size': 15})
-    plt.grid()
-
-    fig,ax = plt.subplots()
-    ax.hist(trans(val_opti_deterministe),bins=300,color="red",alpha=0.45,label="deterministic optimum")
-    ax.hist(trans(val_opti),bins=300,color="blue",alpha=0.45,label="stoch. optimum (gaussian)")
-    #plt.yscale('log')
-    plt.xlabel("Log of Volume of quota bought (€2018)",size=15)
+    ax.hist(trans(val_opti_deterministe),bins=300,color="black",alpha=0.7,label="deterministic optimum")
+    ax.hist(trans(val_opti),bins=300,color="red",alpha=0.7,label="stoch. optimum (gaussian)")
+    plt.xlabel("Log10 of Volume of quota bought (k€2018)",size=15)
     plt.ylabel("Frequency",size=15)
     plt.legend(prop={'size': 15})
     plt.grid()
@@ -572,189 +540,40 @@ def histos():
 
 histos()
 
-
-########################################################################################################
-# Diagrammes circulaires
-########################################################################################################
 #%%
+########################################################################################################
+# Plot import shares within 36-regions framework
+########################################################################################################
+
 from matplotlib import rcParams
 rcParams['font.size'] = 18.0
 
-def autopct_more_than_1(pct) :
-    return ('%1.1f%%' % pct) if pct >= 1.45 else ''
-#%%
-for s in range(5):
-    for source in range(len(sources)):
-        print("Solution pour %s - %s"%(ssps[s],sources[source]))
-        q = solution_pb_deterministe(nbreg,moy_intens,s,source)
-        sizes = pd.DataFrame(100*q,index=reg_list)
-        explode = np.zeros_like(q)  # only "explode" the i-th slice
-        fig1, ax1 = plt.subplots(facecolor='white',figsize=(12,12))
-        p,t,a = ax1.pie(np.reshape(sizes.values,(-1,)), explode=explode, labels=sizes.index, autopct=autopct_more_than_1,
-                shadow=False, startangle=90,rotatelabels=180,labeldistance=None, pctdistance=0.8)
-        ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-
-        # create handles and labels for legend, take only those where value is > 1
-        h,l = zip(*[(h,lab) for h,lab,i in zip(p,sizes.index.values,sizes.values) if i >= 1])
-
-        ax1.legend(h, l,loc="best", bbox_to_anchor=(1,1))
-
-
-        plt.tight_layout()
-        plt.savefig("piechart_deterministic_ssp"+str(s+1)+"_"+sources[source]+".png")
-        plt.show()
-        #plt.close()
-
-        fig2, ax2 = plt.subplots(facecolor='white',figsize=(12,12))  
-        x_pos = np.arange(45)/2
-        bars = np.reshape(sizes.index.values,(-1,))
-        height = np.reshape(sizes.values,(-1,))
-        # Make the plot
-        clrs=[]
-        for i in range(len(q)) :
-            if np.isclose(1.4*qactuel[i],q[i],atol=1e-5):
-                clrs.append('red')
-            else :
-                clrs.append('blue')
-        ax2.barh(x_pos, height, color=clrs,height=0.5)
-
-        # Create names on the x-axis
-        plt.yticks(x_pos, bars)
-        plt.tight_layout()
-        plt.savefig("barh_deterministic_ssp"+str(s+1)+"_"+sources[source]+".png")
-        
-        # Show graphic
-        plt.show()
-
-#%%
-dict_fignames={'qactuel' : 'current_policy', 'q_opti' : "optimal", 
-    'q_opti_scenar' : "optimal_scenarios"}
-
 qdictionary = {'qactuel':qactuel, 'q_opti':q_opti,'q_opti_scenar':q_opti_scenar}
-#%%
-for my_q in ['qactuel', 'q_opti', 'q_opti_scenar'] :
-    print("Solution pour "+my_q)
-    q = qdictionary[my_q]
-    # Pie chart, where the slices will be ordered and plotted counter-clockwise:
-    sizes = pd.DataFrame(100*q,index=reg_list)
-    explode = np.zeros_like(q)  # only "explode" the 2nd slice (i.e. 'Hogs')
 
-    fig1, ax1 = plt.subplots(facecolor='white',figsize=(12,12))
-    p,t,a = ax1.pie(np.reshape(sizes.values,(-1,)), explode=explode, labels=sizes.index, autopct=autopct_more_than_1,
-            shadow=False, startangle=90,rotatelabels=180,labeldistance=None, pctdistance=0.8)
-    ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-
-    # create handles and labels for legend, take only those where value is > 1
-    h,l = zip(*[(h,lab) for h,lab,i in zip(p,sizes.index.values,sizes.values) if i >= 1])
-
-    ax1.legend(h, l,loc="best", bbox_to_anchor=(1,1))
-
-
-    plt.tight_layout()
-    plt.savefig("piechart_"+dict_fignames[my_q]+".png")
-    plt.show()
-    #plt.close()
-
-    fig2, ax2 = plt.subplots(facecolor='white',figsize=(12,12))  
-    x_pos = np.arange(45)/2
-    bars = np.reshape(sizes.index.values,(-1,))
-    height = np.reshape(sizes.values,(-1,))
-    # Make the plot
-    clrs=[]
-    for i in range(len(q)) :
-        if np.isclose(1.4*qactuel[i],q[i],atol=1e-5):
-            clrs.append('red')
-        else :
-            clrs.append('blue')
-    ax2.barh(x_pos, height, color=clrs,height=0.5)
-
-
-    # Create names on the x-axis
-    plt.yticks(x_pos, bars)
-    plt.tight_layout()
-    plt.savefig("barh_"+dict_fignames[my_q]+".png")
-    
-    # Show graphic
-    plt.show()
-#%%
-fig1, ax1 = plt.subplots(nrows=3, ncols=2,facecolor='white',figsize=(12,20))
+fig1, ax1 = plt.subplots(nrows=2, ncols=2,facecolor='white',figsize=(14,20))  
 idx=1
-for (s,source) in [(0,2),(4,0),(1,1),(2,3)] :
+for (s,source) in [(0,2),(1,1)] :
     q = solution_pb_deterministe(nbreg,moy_intens,s,source)
     sizes = pd.DataFrame(100*q,index=reg_list)
-    plt.subplot(3,2,idx)
-    idx+=1
-    explode = np.zeros_like(q)  # only "explode" the 2nd slice (i.e. 'Hogs')
-    
-    p,t,a = plt.pie(np.reshape(sizes.values,(-1,)), explode=explode, labels=sizes.index, autopct=autopct_more_than_1,
-            shadow=False, startangle=90,rotatelabels=180,labeldistance=None, pctdistance=0.8)
-    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-
-    # create handles and labels for legend, take only those where value is > 1
-    h,l = zip(*[(h,lab) for h,lab,i in zip(p,sizes.index.values,sizes.values) if i >= 1])
-
-    #ax1.legend(h, l,loc="best", bbox_to_anchor=(1,1))
-
-    plt.tight_layout()
-
-for q in [qdictionary['qactuel'],qdictionary["q_opti_scenar"]]:    
-    q = solution_pb_deterministe(nbreg,moy_intens,s,source)
-    sizes = pd.DataFrame(100*q,index=reg_list)
-    plt.subplot(3,2,idx)
-    idx+=1
-    explode = np.zeros_like(q)  # only "explode" the 2nd slice (i.e. 'Hogs')
-    
-    p,t,a = plt.pie(np.reshape(sizes.values,(-1,)), explode=explode, labels=sizes.index, autopct=autopct_more_than_1,
-            shadow=False, startangle=90,rotatelabels=180,labeldistance=None, pctdistance=0.8)
-    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-
-    # create handles and labels for legend, take only those where value is > 1
-    h,l = zip(*[(h,lab) for h,lab,i in zip(p,sizes.index.values,sizes.values) if i >= 1])
-
-    #ax1.legend(h, l,loc="best", bbox_to_anchor=(1,1))
-plt.savefig("piechart_6_figs.png")
-    #plt.show()
-    #plt.close()
-#%%
-fig2, ax2 = plt.subplots(nrows=3, ncols=2,facecolor='white',figsize=(14,20))  
-idx=1
-for (s,source) in [(0,2),(4,0),(1,1),(2,3)] :
-    q = solution_pb_deterministe(nbreg,moy_intens,s,source)
-    sizes = pd.DataFrame(100*q,index=reg_list)
-    plt.subplot(3,2,idx)
+    plt.subplot(2,2,idx)
     idx+=1
     x_pos = np.arange(36)/2
     bars = np.reshape(sizes.index.values,(-1,))
     height = np.reshape(sizes.values,(-1,))
-    # Make the plot
-    #clrs=[]
-    #for i in range(len(q)) :
-    #    if np.isclose(1.4*qactuel[i],q[i],atol=1e-5):
-    #        clrs.append('red')
-    #    else :
-    #        clrs.append('blue')
     clrs=['black']*nbreg
     plt.barh(x_pos, height, color=clrs,height=0.5)
-
     # Create names on the x-axis
-    plt.yticks(x_pos, bars,size=12)
+    plt.yticks(x_pos, bars,size=16)
     plt.xlim((0,32))
     plt.tight_layout()
 
 for q in [qdictionary['qactuel'],qdictionary["q_opti_scenar"]]:
     sizes = pd.DataFrame(100*q,index=reg_list)
-    plt.subplot(3,2,idx)
+    plt.subplot(2,2,idx)
     idx+=1
     x_pos = np.arange(36)/2
     bars = np.reshape(sizes.index.values,(-1,))
     height = np.reshape(sizes.values,(-1,))
-    # Make the plot
-    #clrs=[]
-    #for i in range(len(q)) :
-    #    if np.isclose(1.4*qactuel[i],q[i],atol=1e-5):
-    #        clrs.append('red')
-    #    else :
-    #        clrs.append('blue')
     if (q == qdictionary["q_opti_scenar"]).all():
         clrs=['red']*nbreg
     else :
@@ -762,14 +581,14 @@ for q in [qdictionary['qactuel'],qdictionary["q_opti_scenar"]]:
     plt.barh(x_pos, height, color=clrs,height=0.5)
 
     # Create names on the x-axis
-    plt.yticks(x_pos, bars,size=12)
+    plt.yticks(x_pos, bars,size=16)
     plt.xlim((0,32))    
-plt.savefig("barh_6_figs.png")
+plt.savefig("barh_4_figs.png")
         
 
 #%%
 ########################################################################################################
-# Calcul de distances de Kullback-Leiber
+# Compute Kullback-Leiber distances
 ########################################################################################################
 
 def kull(val1,val2):
