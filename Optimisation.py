@@ -381,64 +381,6 @@ def solution_pb_deterministe(num_reg,moyennes,s=0,source_gdp=2,verbose=False):
 q_deterministe_blocs = solution_pb_deterministe(3,moy_intens_blocs)
 q_deterministe = solution_pb_deterministe(nbreg,moy_intens)
 
-
-###################################################################################################
-# Frequence of the event "No quota needed"
-###################################################################################################
-def criteredis(my_q,intens,curr_gdpFR):
-    prix_quot=250   
-    return prix_quot*max(curr_gdpFR*(np.dot(intens,my_q))-cible_EC,0)
-
-def draw_vals(sol,s,Nb=10000):
-    vals = np.zeros(Nb)
-    gdp_FRcurr = gdp_france[ssps[s]][source_gdp]
-    for i in range(Nb):
-        intens = np.array([np.random.normal(distrib_intes[r,s,0],distrib_intes[r,s,1]) for r in range(nbreg)])
-        vals[i] = criteredis(sol,intens,gdp_FRcurr)
-    return vals
-def freq0(x):
-    res=0
-    for i in range(len(x)):
-        if x[i]==0.:
-            res+=1
-    return res/len(x)
-
-freqs = {}
-freqs_opt=[]
-freqs_curr=[]
-for i,s in enumerate(ssps):
-    val_opti = draw_vals(q_opti_scenar,i)
-    val_curr = draw_vals(qactuel,i)
-    freqs_opt.append(1-freq0(val_opti))
-    freqs_curr.append(1-freq0(val_curr))
-    for j,source in enumerate(sources):
-        if source != 'CEPII':
-            freqss=[]
-            for i2,s2 in enumerate(ssps):
-                q=toutes_sol_determ[i,j,:]
-                v= draw_vals(q,i2)
-                freqss.append(1-freq0(v))
-            freqs["det. opt. "+s+" "+source]= np.mean(freqss)
-        print(s+" "+source)
-freqs['stoch. opt.']=np.mean(freqs_opt)
-freqs['current']=np.mean(freqs_curr)
-
-cles = list(freqs.keys())
-print(freqs)
-couleurs=[[1,0,0,1],[0,0,1,1]]+[[0,0,0,1] for i in range(len(cles)-2)]
-plt.figure()
-plt.bar(np.arange(1,len(cles)+1),
-height=[freqs['stoch. opt.'],freqs['current']]+[freqs[key] for key in cles[:-2]],
-color=couleurs)
-plt.axhline(y=freqs['stoch. opt.'],color='red',linestyle='--',alpha=0.5)
-plt.ylabel("Frequencies of the event 'Quota bought'")
-plt.xticks(np.arange(1,len(cles)+1), 
-['stoch. optimum', 'current',]+[key for key in cles[:-2]],
-rotation=75)
-plt.tight_layout()
-plt.show()
-
-
 ###################################################################################################
 # 3D scatter plot
 ###################################################################################################
@@ -515,6 +457,64 @@ if tworegs:
     plt.legend()
     plt.savefig("figs/2dscatterplot.png")
     plt.show()
+
+###################################################################################################
+# Frequence of the event "No quota needed"
+###################################################################################################
+def criteredis(my_q,intens,curr_gdpFR):
+    prix_quot=250   
+    return prix_quot*max(curr_gdpFR*(np.dot(intens,my_q))-cible_EC,0)
+
+def draw_vals(sol,s,Nb=10000):
+    vals = np.zeros(Nb)
+    gdp_FRcurr = gdp_france[ssps[s]][source_gdp]
+    for i in range(Nb):
+        intens = np.array([np.random.normal(distrib_intes[r,s,0],distrib_intes[r,s,1]) for r in range(nbreg)])
+        vals[i] = criteredis(sol,intens,gdp_FRcurr)
+    return vals
+def freq0(x):
+    res=0
+    for i in range(len(x)):
+        if x[i]==0.:
+            res+=1
+    return res/len(x)
+
+freqs = {}
+freqs_opt=[]
+freqs_curr=[]
+for i,s in enumerate(ssps):
+    val_opti = draw_vals(q_opti_scenar,i)
+    val_curr = draw_vals(qactuel,i)
+    freqs_opt.append(1-freq0(val_opti))
+    freqs_curr.append(1-freq0(val_curr))
+    for j,source in enumerate(sources):
+        if source != 'CEPII':
+            freqss=[]
+            for i2,s2 in enumerate(ssps):
+                q=toutes_sol_determ[i,j,:]
+                v= draw_vals(q,i2)
+                freqss.append(1-freq0(v))
+            freqs["det. opt. "+s+" "+source]= np.mean(freqss)
+        print(s+" "+source)
+freqs['stoch. opt.']=np.mean(freqs_opt)
+freqs['current']=np.mean(freqs_curr)
+
+cles = list(freqs.keys())
+print(freqs)
+couleurs=[[1,0,0,1],[0,0,1,1]]+[[0,0,0,1] for i in range(len(cles)-2)]
+plt.figure()
+plt.bar(np.arange(1,len(cles)+1),
+height=[freqs['stoch. opt.'],freqs['current']]+[freqs[key] for key in cles[:-2]],
+color=couleurs)
+plt.axhline(y=freqs['stoch. opt.'],color='red',linestyle='--',alpha=0.5)
+plt.ylabel("Frequencies of the event 'Quota bought'")
+plt.xticks(np.arange(1,len(cles)+1), 
+['stoch. optimum', 'current',]+[key for key in cles[:-2]],
+rotation=75)
+plt.tight_layout()
+plt.savefig('figs/no_quota_bought.png')
+plt.show()
+
 
 ###################################################################################################
 # Response histograms
@@ -684,7 +684,7 @@ plt.show()
 
 #%%
 ########################################################################################################
-# Plot projections of GHG emissions (2030) of the 10 biggest (in 2015) sourcing regions, except CHine
+# Plot projections of GHG emissions (2030) of the 10 biggest (in 2015) sourcing regions, except China
 ########################################################################################################
 rcParams['font.size'] = 15
 def distrib_pays():
