@@ -340,7 +340,7 @@ def opti_gauss(num_reg,distrib):
         prix_quot=250
         crit += cp.pos(0.3*gdp_FR*intens@q-cible_EC/M) * prix_quot
     if num_reg==2 :
-        constr+=[ q <= 1, cp.sum(q) == 1,q <= 0.7*qmax_2regs]
+        constr+=[ q <= 1, cp.sum(q) == 1,q <= qmax_2regs]
     elif num_reg==3:
         constr+=[ q <= 1, cp.sum(q) == 1,q <= qmax_blocs]
     else:
@@ -369,7 +369,7 @@ def solution_pb_deterministe(num_reg,moyennes,s=0,source_gdp=2,verbose=False):
     prix_quot=250
     crit = prix_quot*cp.pos(0.3*gdp_FR*intens@q-cible_EC)
     if num_reg==2 :
-        constr+=[ q <= 1, cp.sum(q) == 1,q <= 0.7*qmax_2regs]
+        constr+=[ q <= 1, cp.sum(q) == 1,q <= qmax_2regs]
     elif num_reg==3:
         constr+=[ q <= 1, cp.sum(q) == 1,q <= qmax_blocs]
     else:
