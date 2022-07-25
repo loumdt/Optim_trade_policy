@@ -486,6 +486,10 @@ def freq0(x):
         if x[i]==0.:
             res+=1
     return res/len(x)
+toutes_sol_determ = np.zeros((5,4,nbreg))
+for s in range(len(ssps)):
+    for source in range(len(sources)):
+        toutes_sol_determ[s,source,:] = solution_pb_deterministe(nbreg,moy_intens,s,source)
 
 freqs = {}
 freqs_opt=[]
