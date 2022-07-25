@@ -1,6 +1,6 @@
 """ Optimize french trade policy
 """
-#%%
+#%% import modules
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
@@ -8,7 +8,7 @@ import json
 import cvxpy as cp
 import pandas as pd
 
-#%%
+#%% load data
 data_countries=pd.read_excel("HISTO_PAYS_IMPORT.xls")
 data_countries = data_countries[['Countries','Volume','Share','Europe','America_Africa','Asia']]
 data_countries = data_countries.iloc[:36,:]
@@ -339,7 +339,9 @@ def solution_pb_deterministe(num_reg,moyennes,s=0,source_gdp=2,verbose=False):
 q_deterministe_blocs = solution_pb_deterministe(3,moy_intens_blocs)
 q_deterministe = solution_pb_deterministe(nbreg,moy_intens)
 
-################ 3D plot #####################################################################
+###################################################################################################
+# 3D scatter plot
+###################################################################################################
 #%%
 parbloc=True
 if parbloc:
@@ -361,7 +363,6 @@ if parbloc:
     ax.scatter(xs, ys, zs, marker='x',color='black',label='det. opt.',alpha=1, depthshade=False,s=200)
     ax.scatter([q_opti_scenar_blocs[0]],[q_opti_scenar_blocs[1]],[q_opti_scenar_blocs[2]],marker='o',color='red',label='stoch. opt.',alpha=1, depthshade=False,s=300)
     ax.scatter([qactuel_blocs[0]],[qactuel_blocs[1]],[qactuel_blocs[2]],marker='D',color='blue',label='current',alpha=1, depthshade=False,s=200)
-    #ax.set_xlabel('\n' + 'xlabel', linespacing=4)
     ax.set_xlabel('\n European share', linespacing=2,size=19)
     ax.set_ylabel('\n American share', linespacing=2,size=19)
     ax.set_zlabel('\n Asian share', linespacing=2,size=19)
@@ -385,15 +386,13 @@ if parbloc:
     for t in ax.zaxis.get_major_ticks(): t.label.set_fontsize(17)
     ax.view_init(25, 62)
     plt.tight_layout()
-    plt.savefig("3dscatterplot.png")
+    plt.savefig("figs/3dscatterplot.png")
     plt.show()
 
 ###################################################################################################
 # Response histograms
 ###################################################################################################
-#%% Response histograms
-
-# Test de la politique optimale
+#%% Plot histograms of event "no quota bought"
 def criteremoy(ssp,source,my_q):
     curr_gdpFR = gdp_france["SSP{}".format(ssp+1)][sources[source]]
     return max(curr_gdpFR*(np.dot(moy_intens[ssp,source],my_q))-cible_EC,0)
@@ -485,32 +484,17 @@ rotation=45)
 plt.tight_layout()
 plt.show()
 
-#exit()
-#%%
+#%% tranpose distributions with log scale
 def trans(x):
-    #return x
     res=[]
     for i in range(len(x)):
         if x[i]!=0.:
             res.append(np.log10(x[i]))
-            #res.append(x[i])
     return res
-#%%   
-def histos():
-    fig,ax = plt.subplots()
-    ax.hist(trans(val_stratmoy),bins=300,color="orange",alpha=0.75,label="mean strategy" )
-    ax.hist(trans(val_opti_deterministe),bins=300,color="black",alpha=1,label="deterministic optimum")
-    ax.hist(trans(val_actuelle),bins=300,color="blue",alpha=0.5,label="Current situation" )
-    ax.hist(trans(val_opti),bins=300,color="red",alpha=0.5,label="stoch. optimum (gaussian)" )
-
-    plt.xlabel("Log10 of Volume of quota bought (k€2018)",size=15)
-    plt.ylabel("Frequency",size=15)
-    plt.legend(prop={'size': 15})
-    plt.grid()
-    plt.show()
-    
+#%% Plot histograms of distributions
+def histos():    
     fig,ax = plt.subplots(figsize=(14,10))
-    ax.hist(trans(val_stratmoy),bins=300,color="orange",alpha=0.75,label="Mean strategy")
+    #ax.hist(trans(val_stratmoy),bins=300,color="orange",alpha=0.75,label="Mean strategy")
     ax.hist(trans(val_opti_deterministe),bins=300,color="black",alpha=1,label="Det. opt. SSP1 - IIASA")
     ax.hist(trans(val_actuelle),bins=300,color="blue",alpha=0.5,label="Current situation")
     ax.hist(trans(val_opti_scenar),bins=300,color="red",alpha=0.5,label="Stochastic optimum")
@@ -520,25 +504,7 @@ def histos():
     plt.xticks(size=20)
     plt.yticks(size=20)
     plt.grid()
-    plt.savefig('histo_1.png')
-    plt.show()
-    
-    fig,ax = plt.subplots()
-    ax.hist(trans(val_opti_deterministe),bins=300,color="black",alpha=0.7,label="deterministic optimum")
-    ax.hist(trans(val_opti_scenar),bins=300,color="red",alpha=0.7,label="stoch. optimum")
-    plt.xlabel("Log10 of Volume of quota bought (k€2018)",size=15)
-    plt.ylabel("Frequency",size=15)
-    plt.legend(prop={'size': 15})
-    plt.grid()
-    plt.show()
-
-    fig,ax = plt.subplots()
-    ax.hist(trans(val_opti_deterministe),bins=300,color="black",alpha=0.7,label="deterministic optimum")
-    ax.hist(trans(val_opti),bins=300,color="red",alpha=0.7,label="stoch. optimum (gaussian)")
-    plt.xlabel("Log10 of Volume of quota bought (k€2018)",size=15)
-    plt.ylabel("Frequency",size=15)
-    plt.legend(prop={'size': 15})
-    plt.grid()
+    plt.savefig('figs/histo_1.png')
     plt.show()
 
 histos()
@@ -586,7 +552,7 @@ for q in [qdictionary['qactuel'],qdictionary["q_opti_scenar"]]:
     # Create names on the x-axis
     plt.yticks(x_pos, bars,size=16)
     plt.xlim((0,32))    
-plt.savefig("barh_4_figs.png")
+plt.savefig("figs/barh_4_figs.png")
 plt.show()
 
 #%%
@@ -622,7 +588,7 @@ def distrib_pays():
     #fig.suptitle("Mean carbon intensity on all SSPs")
     ax[k].set(xlabel="Carbon intensity (ktCO2eq/G€)")
     plt.tight_layout()
-    plt.savefig('total.png')
+    plt.savefig('figs/total.png')
     plt.show()
     return   
 if create_little_json :
