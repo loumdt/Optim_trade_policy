@@ -19,6 +19,7 @@ trois_blocs = ['Europe', 'America and Africa', 'Asia']
 liste_europe = np.array(data_countries.loc[:,'Europe'])
 liste_am = np.array(data_countries.loc[:,'America_Africa'])
 liste_asia = np.array(data_countries.loc[:,'Asia'])
+liste_row = np.array(list(liste_am)+list(liste_asia))
 
 create_little_json = False
 if create_little_json:
@@ -107,16 +108,21 @@ if create_little_json:
     emiAm=0
     gdpAs=0
     emiAs=0
+    gdpROW=0
+    emiROW=0
     dictUE={}
     dictAm={}
     dictAs={}
+    dictROW={}
     for s in range(5):
         innerUE={}
         innerAm={}
         innerAs={}
+        innerROW={}
         gdp_UE={}
         gdp_Am={}
         gdp_As={}
+        gdp_ROW={}
         for source in sources:
             for r in reg_list:
                 if r in list(GDP_data["CEPII"]["SSP1"].keys()):
@@ -132,18 +138,25 @@ if create_little_json:
                     if r in liste_asia:
                         gdpAs+=  gdpr
                         emiAs+= np.mean(intensr)
+                    if r in liste_row:
+                        gdpROW+=  gdpr
+                        emiROW+= np.mean(intensr)
             gdp_UE[source]=gdpUE
             gdp_Am[source]=gdpAm
             gdp_As[source]=gdpAs
+            gdp_ROW[source]=gdpROW
             innerUE[source]=emiUE/gdpUE
             innerAm[source]=emiAm/gdpAm
             innerAs[source]=emiAs/gdpAs
+            innerROW[source]=emiROW/gdpROW
         dictUE["SSP{}".format(s+1)] = innerUE
         dictAm["SSP{}".format(s+1)] = innerAm
         dictAs["SSP{}".format(s+1)] = innerAs
+        dictROW["SSP{}".format(s+1)] = innerROW
     distribemissionsUE = np.zeros((5,4*len(intensr)))
     distribemissionsAm = np.zeros((5,4*len(intensr)))
     distribemissionsAs = np.zeros((5,4*len(intensr)))
+    distribemissionsROW = np.zeros((5,4*len(intensr)))
     for r in reg_list:
         if r in list(GDP_data["CEPII"]["SSP1"].keys()):
             for s in range(5):
@@ -157,6 +170,8 @@ if create_little_json:
                     distribemissionsAm[s,:]+=np.array(emiralssources)/np.mean([gdp_Am[source] for source in sources])
                 if r in liste_asia:
                     distribemissionsAs[s,:]+=np.array(emiralssources)/np.mean([gdp_As[source] for source in sources])
+                if r in liste_row:
+                    distribemissionsROW[s,:]+=np.array(emiralssources)/np.mean([gdp_ROW[source] for source in sources])
     for s in range(5):
         mu,sigma = norm.fit(distribemissionsUE[s])
         dictUE["SSP{}".format(s+1)]["distrib norm"] = [mu, sigma]
@@ -164,6 +179,8 @@ if create_little_json:
         dictAm["SSP{}".format(s+1)]["distrib norm"] = [mu, sigma]
         mu,sigma = norm.fit(distribemissionsAs[s])
         dictAs["SSP{}".format(s+1)]["distrib norm"] = [mu, sigma]
+        mu,sigma = norm.fit(distribemissionsROW[s])
+        dictROW["SSP{}".format(s+1)]["distrib norm"] = [mu, sigma]
 
     json1 = json.dumps(dictUE)
     f = open("data_opti/Emi_UE.json","w")
@@ -175,6 +192,10 @@ if create_little_json:
     f.close()
     json1 = json.dumps(dictAs)
     f = open("data_opti/Emi_Asia.json","w")
+    f.write(json1)
+    f.close()
+    json1 = json.dumps(dictROW)
+    f = open("data_opti/Emi_ROW.json","w")
     f.write(json1)
     f.close()
 
@@ -229,6 +250,18 @@ for bloc in range(3):
         for source in range(len(sources)):
             moy_intens_blocs[s,source,bloc] = my_dict[ssps[s]][sources[source]]
 
+moy_intens_2regs = np.zeros((len(ssps),len(sources),2))
+distrib_intes_2regs = np.zeros((2,len(ssps),2))
+
+regs=['UE','ROW']
+for r in range(2):
+    f=open('data_opti/Emi_'+regs[r]+'.json')
+    my_dict=json.load(f)
+    f.close()
+    for s in range(len(ssps)):
+        distrib_intes_2regs[r,s,:] = my_dict[ssps[s]]["distrib norm"]
+        for source in range(len(sources)):
+            moy_intens_blocs[s,source,bloc] = my_dict[ssps[s]][sources[source]]
 
 # Pour la contrainte de capacite d exportation
 qactuel = np.array(data_countries.loc[:,'Share']/100)
@@ -241,12 +274,18 @@ for r in range(nbreg):
         qactuel_blocs[1] += qactuel[r]
     if reg_list[r] in liste_asia:
         qactuel_blocs[2] += qactuel[r]
-    
-print(qactuel_blocs)
+        
+qactuel_2regs = np.zeros(2)
+for r in range(nbreg):
+    if reg_list[r] in liste_europe:
+        qactuel_2regs[0] += qactuel[r]
+    if reg_list[r] in liste_row:
+        qactuel_2regs[1] += qactuel[r]
+
 pct_exportmax = 0.6
 qmax = (1+ pct_exportmax)*np.array(qactuel)
 qmax_blocs = (1+ pct_exportmax)*np.array(qactuel_blocs)
-
+qmax_2regs = (1+ pct_exportmax)*np.array(qactuel_2regs)
 
 ###################################################################################################
 # Method 2 : Second formulation (explicitly convex), with scenarios
@@ -278,6 +317,7 @@ def opti_scenar(num_reg,moyennes_intens):
     return q.value
 q_opti_scenar_blocs = opti_scenar(3,moy_intens_blocs)
 q_opti_scenar = opti_scenar(nbreg,moy_intens)
+q_opti_scenar_2regs = opti_scenar(2,moy_intens_2regs)
 
 ###################################################################################################
 # Method 3 : SSP pour GDP et distrib normale pour emi associée au SSP tiré
@@ -312,6 +352,8 @@ def opti_gauss(num_reg,distrib):
     return q.value
 q_opti = opti_gauss(nbreg,distrib_intes)
 q_opti_blocs = opti_gauss(3,distrib_intes_blocs)
+q_opti_2regs = opti_gauss(2,distrib_intes_2regs)
+
 ###################################################################################################
 # Deterministic optimization : Anticipative future, everything is known : known SSP and carbon intensity = gaussian distribution mean
 ###################################################################################################
@@ -387,6 +429,33 @@ if parbloc:
     ax.view_init(25, 62)
     plt.tight_layout()
     plt.savefig("figs/3dscatterplot.png")
+    plt.show()
+    
+###################################################################################################
+# 2D scatter plot
+###################################################################################################
+#%%
+tworegs=True
+if tworegs:
+    toutes_sol_determ = np.zeros((5,4,2))
+    for s in range(len(ssps)):
+        for source in range(len(sources)):
+            toutes_sol_determ[s,source,:] = solution_pb_deterministe(2,moy_intens_2regs,s,source)
+
+    xs = []
+    ys = []
+    for s in range(len(ssps)):
+        for source in range(len(sources)):
+            xs.append(toutes_sol_determ[s,source,0])
+            ys.append(toutes_sol_determ[s,source,1])
+    plt.figure()
+    plt.scatter(xs, ys, marker='x',color='black',label='det. opt.',alpha=1)
+    plt.scatter([q_opti_scenar_2regs[0]],[q_opti_scenar_2regs[1]],marker='o',color='red',label='stoch. opt.',alpha=1)
+    plt.scatter([qactuel_2regs[0]],[qactuel_2regs[1]],marker='D',color='blue',label='current',alpha=1)
+    plt.set_xlabel('\n European share', linespacing=2,size=19)
+    plt.set_ylabel('\n RoW share', linespacing=2,size=19)
+    plt.legend()
+    plt.savefig("figs/2dscatterplot.png")
     plt.show()
 
 ###################################################################################################
