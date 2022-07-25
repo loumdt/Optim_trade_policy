@@ -469,6 +469,7 @@ if tworegs:
 ###################################################################################################
 # Frequence of the event "No quota needed"
 ###################################################################################################
+source_gdp = "IIASA"
 def criteredis(my_q,intens,curr_gdpFR):
     prix_quot=250   
     return prix_quot*max(curr_gdpFR*(np.dot(intens,my_q))-cible_EC,0)
