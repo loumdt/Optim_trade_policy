@@ -261,7 +261,7 @@ for r in range(2):
     for s in range(len(ssps)):
         distrib_intes_2regs[r,s,:] = my_dict[ssps[s]]["distrib norm"]
         for source in range(len(sources)):
-            moy_intens_blocs[s,source,bloc] = my_dict[ssps[s]][sources[source]]
+            moy_intens_2regs[s,source,r] = my_dict[ssps[s]][sources[source]]
 
 # Pour la contrainte de capacite d exportation
 qactuel = np.array(data_countries.loc[:,'Share']/100)
@@ -302,7 +302,9 @@ def opti_scenar(num_reg,moyennes_intens):
         for source in range(len(sources)):
             prix_quot=250
             crit += pis.value*prix_quot*cp.pos(0.3*gdpFR[s][source]*moyennes_intens[s,source]@q-cible_EC) #cible EC est en KtCO2eq
-    if num_reg==3:
+    if num_reg==2 :
+        constr+=[ q <= 1, cp.sum(q) == 1,q <= 0.7*qmax_2regs]
+    elif num_reg==3:
         constr+=[ q <= 1, cp.sum(q) == 1,q <= 0.7*qmax_blocs]
     else:
         constr+=[ q <= 1, cp.sum(q) == 1,q <= qmax]
@@ -337,7 +339,9 @@ def opti_gauss(num_reg,distrib):
         gdp_FR = gdpFR[s][source_gdp]/M
         prix_quot=250
         crit += cp.pos(0.3*gdp_FR*intens@q-cible_EC/M) * prix_quot
-    if num_reg==3:
+    if num_reg==2 :
+        constr+=[ q <= 1, cp.sum(q) == 1,q <= 0.7*qmax_2regs]
+    elif num_reg==3:
         constr+=[ q <= 1, cp.sum(q) == 1,q <= qmax_blocs]
     else:
         constr+=[ q <= 1, cp.sum(q) == 1,q <= qmax]
@@ -364,7 +368,9 @@ def solution_pb_deterministe(num_reg,moyennes,s=0,source_gdp=2,verbose=False):
     gdp_FR = gdpFR[s][source_gdp] #known gdp
     prix_quot=250
     crit = prix_quot*cp.pos(0.3*gdp_FR*intens@q-cible_EC)
-    if num_reg==3:
+    if num_reg==2 :
+        constr+=[ q <= 1, cp.sum(q) == 1,q <= 0.7*qmax_2regs]
+    elif num_reg==3:
         constr+=[ q <= 1, cp.sum(q) == 1,q <= qmax_blocs]
     else:
         constr+=[ q <= 1, cp.sum(q) == 1,q <= qmax]
@@ -452,12 +458,14 @@ if tworegs:
     plt.scatter(xs, ys, marker='x',color='black',label='det. opt.',alpha=1)
     plt.scatter([q_opti_scenar_2regs[0]],[q_opti_scenar_2regs[1]],marker='o',color='red',label='stoch. opt.',alpha=1)
     plt.scatter([qactuel_2regs[0]],[qactuel_2regs[1]],marker='D',color='blue',label='current',alpha=1)
-    plt.set_xlabel('\n European share', linespacing=2,size=19)
-    plt.set_ylabel('\n RoW share', linespacing=2,size=19)
+    plt.xlabel('European share',size=19)
+    plt.ylabel('RoW share',size=19)
     plt.legend()
+    plt.tight_layout()
     plt.savefig("figs/2dscatterplot.png")
     plt.show()
 
+#%%
 ###################################################################################################
 # Frequence of the event "No quota needed"
 ###################################################################################################
