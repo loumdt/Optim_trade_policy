@@ -469,17 +469,23 @@ if tworegs:
 ###################################################################################################
 # Frequence of the event "No quota needed"
 ###################################################################################################
-source_gdp = "IIASA"
+source_gdp= "IIASA"
 def criteredis(my_q,intens,curr_gdpFR):
     prix_quot=250   
     return prix_quot*max(curr_gdpFR*(np.dot(intens,my_q))-cible_EC,0)
 
-def draw_vals(sol,s,Nb=10000):
+def criteremoy(ssp,source,my_q):
+    curr_gdpFR = gdp_france["SSP{}".format(ssp+1)][sources[source]]
+    vol_quot = max(curr_gdpFR*(np.dot(moy_intens[ssp,source],my_q))-cible_EC,0)
+    return 250*vol_quot
+
+def draw_vals(sol,s,source,Nb=10000):
     vals = np.zeros(Nb)
-    gdp_FRcurr = gdp_france[ssps[s]][source_gdp]
+    #gdp_FRcurr = gdp_france[ssps[s]][source_gdp]
     for i in range(Nb):
-        intens = np.array([np.random.normal(distrib_intes[r,s,0],distrib_intes[r,s,1]) for r in range(nbreg)])
-        vals[i] = criteredis(sol,intens,gdp_FRcurr)
+        #intens = np.array([np.random.normal(distrib_intes[r,s,0],distrib_intes[r,s,1]) for r in range(nbreg)])
+        #vals[i] = criteredis(sol,intens,gdp_FRcurr)
+        vals[i] = criteremoy(s,source,sol)
     return vals
 def freq0(x):
     res=0
@@ -496,17 +502,18 @@ freqs = {}
 freqs_opt=[]
 freqs_curr=[]
 for i,s in enumerate(ssps):
-    val_opti = draw_vals(q_opti_scenar,i)
-    val_curr = draw_vals(qactuel,i)
-    freqs_opt.append(1-freq0(val_opti))
-    freqs_curr.append(1-freq0(val_curr))
     for j,source in enumerate(sources):
+        val_opti = draw_vals(q_opti,i,j)
+        val_curr = draw_vals(qactuel,i,j)
+        freqs_opt.append(1-freq0(val_opti))
+        freqs_curr.append(1-freq0(val_curr))
         if source != 'CEPII':
             freqss=[]
+            q=toutes_sol_determ[i,j,:]
             for i2,s2 in enumerate(ssps):
-                q=toutes_sol_determ[i,j,:]
-                v= draw_vals(q,i2)
-                freqss.append(1-freq0(v))
+                for j2,source2 in enumerate(sources):
+                    v= draw_vals(q,i2,j2)
+                    freqss.append(1-freq0(v))
             freqs["det. opt. "+s+" "+source]= np.mean(freqss)
         print(s+" "+source)
 freqs['stoch. opt.']=np.mean(freqs_opt)
